@@ -9,15 +9,21 @@ function movlnton(uint16_t regA, uint16_t regB){
 
 }
 
-function movlntonn(){
+function movlntonn(uint16_t regA, uint16_t regB){
 
 }
 
-function movlnnton(){
+function movlnnton(uint16_t regA, uint16_t regB){
 
 }
 
-function movlnntonn(){
+function movlnntonn(uint16_t regA, uint16_t regB){
 
 }
+
+function movlntoHL(uint16_t regA, uint16_t regB){
+
+}
+
+
 
