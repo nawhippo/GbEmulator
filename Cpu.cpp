@@ -1,7 +1,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
-
+#include <opCodes.cpp>
 
 //seperate opcode functions w/ parameters specified by rom
 
@@ -24,7 +24,7 @@ Singleton globals = Singleton.getInstance();
 Registers register = globals.getRegister();
 int& programCounter = globals.getProgramCounter();
 uint8_t ROM = globals.getROM();
-
+OpCodes opcodes; 
 
 //r8 operand translation
 int operandTranslation(int translate){
@@ -146,6 +146,9 @@ int executeLoop(){
         pc+=1;
     }
     
+
+
+        
     case((instruction) == 0b11000110){
         int nextbyte = instruction >> 8;
         opcodes.addnton(6, 0, 0, nextbyte);
@@ -153,30 +156,147 @@ int executeLoop(){
         pc+=2;
     }
     
+
+    //carry
     case((instruction) == 0b11001110){
         int nextbyte = instruction >> 8;
-        opcodes.addntocarry(6, 0, 0, nextbyte);
+        opcodes.addntoncarry(6, 0, 0, nextbyte);
+        //we move two bytes now
+        pc+=2;
+    }
+    //sub
+    case((instruction) == 0b11010110){
+        int nextbyte = instruction >> 8;
+        opcodes.subnton(6, 0, 0, nextbyte);
         //we move two bytes now
         pc+=2;
     }
 
+    //subc
+    case((instruction) == 0b11011110){
+        int nextbyte = instruction >> 8;
+        opcodes.subntoncarry(6, 0, 0, nextbyte);
+        //we move two bytes now
+        pc+=2;
+    }
+
+    //and
+    case((instruction) == 0b11100110){
+        int nextbyte = instruction >> 8;
+        opcodes.andnton(6, 0, nextbyte);
+        //we move two bytes now
+        pc+=2;
+    }
+
+    //xor
+    case((instruction) == 0b11101110){
+        int nextbyte = instruction >> 8;
+        opcodes.xornton(6, 0, nextbyte);
+        //we move two bytes now
+        pc+=2;
+    }
+    
+    //or
+    case((instruction) == 0b11110110){
+        int nextbyte = instruction >> 8;
+        opcodes.xornton(6, 0, nextbyte);
+        //we move two bytes now
+        pc+=2;
+    }
+    //cp
+    case((instruction) == 0b11111110){
+        int nextbyte = instruction >> 8;
+        opcodes.cpnton(6, 0, nextbyte);
+        //we move two bytes now
+        pc+=2;
+    }
+
+    //ret conds
+    //0 nz
+    //1 z
+    //2 nc
+    //3 c
+   case((instruction) == 0b11000000){
+        if !(register.flagsregister.zero){
+            globals.pop();
+        }
+        pc += 1
+    }
+
+    //z
+    case((instruction) == 0b11001000){
+        if (register.flagsregister.zero){
+            globals.pop();
+        }
+        pc+=1;
+    }
+
+    //nc
+    case((instruction) == 0b11010000){
+        if !(register.flagsregister.carry){
+            globals.pop();
+        }
+        pc+=1;
+    }
+
+    //c
+    case((instruction) == 0b11011000){
+        if !(register.flagsregister.carry){
+            globals.pop();
+        }
+        pc+=1;
+    }
 
 
+    //ret
+    case((instruction) == 011001001){
+        globals.pop();
+        pc+=1;
+    }
 
+    //reti
+    //look at this one again 
+    case((instruction) == 011001001){
+        globals.pop();
+        pc+=1;
     }
 
 
 
+    //jp cond 
 
+    //0 nz
+    case((instruction) == 11000010){
+        if !(register.flagsregister.zero){
+            opcodes.jump();
+        }
+    }
 
+    //1 z
+    case((instruction) == 11001010){
+        if (register.flagsregister.zero){
+            opcodes.jump();
+        }
+    }
 
+    //2 nc
+    case((instruction) == 11010010){
+        if !(register.flagsregister.carry){
+            opcodes.jump();
+        }
+    }
 
+    //3 c
+    case((instruction) == 11011010){
+        if (register.flagsregister.carry){
+            opcodes.jump();
+        }
+    }
 
-
-
-
-
-
+    //reti 
+    case((instruction) == 11011001){
+        globals.pop();
+    }
 
 
 

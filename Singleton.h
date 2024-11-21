@@ -48,7 +48,7 @@ int& getStackPtr() {
 }
 
 uint8_t& getROM() {
-
+    return ROM;
 }
 
 uint8_t* getRAM() {
@@ -59,6 +59,8 @@ uint8_t* getRAM() {
 Registers& getRegisters() {
     return registers; 
 }
+
+
 
 
 

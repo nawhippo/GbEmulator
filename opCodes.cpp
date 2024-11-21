@@ -5,10 +5,27 @@
 #include <cstddef>
 //we need this actually manipulating values in rom
 //these are indices in our register global. 
+
+
+class OpCodes {
+
 Singleton& singletonInstace = Singleton::getInstance();
 Registers& reg = singletonInstace.getRegisters(); 
 uint8_t * ROM = singletonInstace.getROM();
 uint8_t * ROMPTR = singletonInstace.getROMPTR();
+uint8_t * stackPtr = singletonInstace.getInstance.getStackPtr;
+
+
+void pop(){
+    this.stackPtr = stackptr += 1;
+}
+
+//go forward ie: further down in addresses
+void push(void (*func) (int)){
+    this.stackPtr = stackptr -= 1;
+    stackPtr* = func();
+}
+ 
 
 void nop(){
     return;
@@ -72,15 +89,40 @@ void addnton(int destRegInd, int regAInd, int regBInd, int byteToAdd = -1) {
 }
 
 
-
-
-
-
-void xornandn(int regAInd, int regBInd, int byteToAdd = -1){
-    if(reg.registersArr[regAInd] | reg.registersArr[regBInd]){
-        reg.flagregisters = true; 
-    }
+void andnton(int regAInd, int regBInd, int byteToAnd = -1){
+ if (byteToAnd != -1){
+        reg.registersArr[regAInd] = reg.registersArr[regAInd] & byteToAnd;
+        return;
+    } else {
+    reg.registersArr[regAInd] = reg.registersArr[regAInd] & reg.registersArr[regBInd];
+    return;
 }
+}
+
+
+void xornton(int regAInd, int regBInd, int byteToXor = -1){
+ if (byteToXor != -1){
+        reg.registersArr[destRegInd] = reg.registersArr[destRegInd] ^ byteToXor;
+        return;
+    } else {
+    reg.registersArr[regAInd] = reg.registersArr[regAInd] ^ reg.registersArr[regBInd];
+    return;
+}
+}
+
+
+
+void ornton(int regAInd, int regBInd, int byteToOr = -1){
+ if (byteToAdd != -1){
+        reg.registersArr[regAInd] = reg.registersArr[destRegInd] | byteToOr;
+        return;
+    } else {
+    reg.registersArr[regAInd] = reg.registersArr[regAInd] | reg.registersArr[regBInd];
+    return;
+}
+}
+
+
 
 void cpnandn(int regAInd, int regBInd){
      if(reg.registersArr[regAInd] == reg.registersArr[regBInd]){
@@ -121,12 +163,12 @@ void addnntonn(int destRegInd, int regAInd, int regBInd){
 
 
 
-void subnton(int destRegInd, int regAInd, int regBInd, int byteToAdd = -1) {
-    if (byteToAdd != -1){
-    uint8_t result = reg.registersArr[regAInd] + byteToAdd;
+void subnton(int destRegInd, int regAInd, int regBInd, int byteToSub = -1) {
+    if (byteToSub != -1){
+    uint8_t result = reg.registersArr[regAInd] - byteToSub;
 
     // If there's a borrow (A < B), carry flag is cleared
-    if (reg.registersArr[regAInd] < byteToAdd) {
+    if (reg.registersArr[regAInd] < byteToSub) {
         reg.flagsregister.carry = true;  // There was a borrow
     } else {
         reg.flagsregister.carry = false; // No borrow
@@ -152,6 +194,12 @@ void subnton(int destRegInd, int regAInd, int regBInd, int byteToAdd = -1) {
     // Set the Subtract flag since it's a subtraction
     reg.flagsregister.subtract = true;
     }
+
+    /*...........................................................................*/
+    /*...........................................................................*/
+    /*...........................................................................*/
+
+
 
     uint8_t result = reg.registersArr[regAInd] - reg.registersArr[regBInd];
 
@@ -393,7 +441,7 @@ uint8_t jump(int jumpInd){
 ROMPTR = ROM[jumpInd];
 }
 
-void cpregn(int destRegInd, int regAInd, int regBInd){
+void cpnton(int destRegInd, int regAInd, int regBInd, int byteToSub = -1){
     //Subtract with Carry: take into account the carry flag
     uint8_t carry = reg.flagsregister.carry ? 1 : 0;
     uint8_t result = reg.registersArr[regAInd] - reg.registersArr[regBInd] - carry;
