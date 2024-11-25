@@ -12,6 +12,7 @@ class Registers {
         bool subtract;
         bool half_carry;
         bool carry;
+        bool masterinterruptenable;
         };
         FlagsRegister flagsregister;
 

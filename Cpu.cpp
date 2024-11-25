@@ -249,14 +249,14 @@ int executeLoop(){
 
 
     //ret
-    case((instruction) == 011001001){
+    case((instruction) == 0b011001001){
         globals.pop();
         pc+=1;
     }
 
     //reti
     //look at this one again 
-    case((instruction) == 011001001){
+    case((instruction) == 0b011001001){
         globals.pop();
         pc+=1;
     }
@@ -266,39 +266,45 @@ int executeLoop(){
     //jp cond 
 
     //0 nz
-    case((instruction) == 11000010){
+    case((instruction) == 0b11000010){
         if !(register.flagsregister.zero){
             opcodes.jump();
         }
     }
 
     //1 z
-    case((instruction) == 11001010){
+    case((instruction) == 0b11001010){
         if (register.flagsregister.zero){
             opcodes.jump();
         }
     }
 
     //2 nc
-    case((instruction) == 11010010){
+    case((instruction) == 0b11010010){
         if !(register.flagsregister.carry){
             opcodes.jump();
         }
     }
 
     //3 c
-    case((instruction) == 11011010){
+    case((instruction) == 0b11011010){
         if (register.flagsregister.carry){
             opcodes.jump();
         }
     }
 
     //reti 
-    case((instruction) == 11011001){
+    case((instruction) == 0b11011001){
         globals.pop();
+        register.flagsregister.masterinterruptenable = true;
     }
 
 
+    //jp hl 
+    case((instruction) = 0b11101001){
+        obkcodes
+    }
+    
 
 
 

@@ -149,6 +149,7 @@ return;
 
 
 
+
 void addnntonn(int destRegInd, int regAInd, int regBInd){
     reg.doubleRegistersArr[destRegInd] = reg.doubleRegistersArr[regAInd] + reg.doubleRegistersArr[regBInd];
     if (reg.registersArr[destRegInd] > 65535){
