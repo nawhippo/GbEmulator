@@ -17,12 +17,12 @@ uint8_t * stackPtr = singletonInstace.getInstance.getStackPtr;
 
 
 void pop(){
-    this.stackPtr = stackptr += 1;
+    stackptr += 1;
 }
 
 //go forward ie: further down in addresses
 void push(void (*func) (int)){
-    this.stackPtr = stackptr -= 1;
+    stackptr -= 1;
     stackPtr* = func();
 }
  
@@ -36,6 +36,83 @@ void nop(){
 void jump(){
     singletonInstace.getInstance.ROMPTR = ROM[singletonInstace.getProgramCounter()];
 }
+
+
+void adjustAcc() {
+    uint8_t acc = reg.registersArr[6];  
+    if ((acc & 0x0F) > 9 || reg.flagsregister.half_carry) {
+        acc += 6;  
+    }
+    if (acc > 0x99 || reg.flagsregister.carry) {
+        acc += 0x60;  
+        reg.flagsregister.carry = true;  
+    } else {
+        reg.flagsregister.carry = false; 
+    }
+    reg.registersArr[6] = acc; 
+    reg.flagsregister.half_carry = false;  
+}
+
+
+//flips all bits of acc
+void complement() {
+    reg.registersArr[6] = ~(reg.registersArr[6]);
+}
+
+
+void setCarryFlag(){
+    reg.flagsregister.carry = true;
+}
+
+void ComplementCarryFlag(){
+    if !(reg.flagsregister.carry){
+        reg.flagsregister.carry = false;
+    } else {
+        reg.flagsregister.carry = true; 
+    }
+}
+
+
+
+void rotaterightcircular(int destRegInd) {
+    // Rotate the MSB to the LSB (circular behavior)
+    if ((reg.registersArr[destRegInd] & 128) == 128) { // MSB is 128
+        reg.registersArr[destRegInd] = (reg.registersArr[destRegInd] >> 1) | 128;  
+    } else {
+        reg.registersArr[destRegInd] = reg.registersArr[destRegInd] >> 1;
+    }
+}
+
+void rotateleftcircular(int destRegInd) {
+    // Rotate the LSB to the MSB (circular behavior)
+    if ((reg.registersArr[destRegInd] & 1) == 1) { // LSB is 1
+        reg.registersArr[destRegInd] = (reg.registersArr[destRegInd] << 1) | 1;  
+    } else {
+        reg.registersArr[destRegInd] = reg.registersArr[destRegInd] << 1;
+    }
+
+void rotaterightthroughcarry(int destRegInd) {
+    // Use carry and update it with MSB (since we're in big-endian)
+    if ((reg.registersArr[destRegInd] & 128) == 128) { // MSB is 128
+        reg.registersArr[destRegInd] = (reg.registersArr[destRegInd] >> 1) | (reg.flags.carry << 7);
+        reg.flags.carry = 1;  // Set carry flag
+    } else {
+        reg.registersArr[destRegInd] = reg.registersArr[destRegInd] >> 1 | (reg.flags.carry << 7);
+        reg.flags.carry = 0;  // Clear carry flag
+    }
+}
+
+void rotateleftthroughcarry(int destRegInd) {
+    // Use carry and update it with LSB (since we're in big-endian)
+    if ((reg.registersArr[destRegInd] & 1) == 1) { // LSB is 1
+        reg.registersArr[destRegInd] = (reg.registersArr[destRegInd] << 1) | reg.flags.carry;
+        reg.flags.carry = 1;  // Set carry flag
+    } else {
+        reg.registersArr[destRegInd] = (reg.registersArr[destRegInd] << 1) | reg.flags.carry;
+        reg.flags.carry = 0;  // Clear carry flag
+    }
+}
+
 
 
 

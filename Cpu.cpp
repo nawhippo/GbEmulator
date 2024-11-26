@@ -3,15 +3,13 @@
 #include <unordered_map>
 #include <opCodes.cpp>
 
-//seperate opcode functions w/ parameters specified by rom
 
 
-//seperate functions for every register operation?
+//instructinos 4 to 8 bits long
+//uint16_ts can be passed as indices to RAM
 
-
-
-//instructinos 4 to 8 bytes long
-
+//TODO: IMM 8 block 3
+//$CB PREFIXES
 
 
 //max len of instructional set it 3 bytes
@@ -72,7 +70,7 @@ int executeLoop(){
 //flags first
     switch(instruction){
     //pc is incremented by bytes of the instruction
-    int instruction = ROM[pc];
+    uint8_t instruction = ROM[pc];
     //1 byte instructional sets
     case (instruction == 0x00){
         pc += 1;
@@ -81,6 +79,324 @@ int executeLoop(){
     case (instruction == 0x76){
         pc+=1;
     }
+
+
+    //rcla accumulator rotate right 
+    case (instruction == 0b00000111){
+        OpCodes.rotateleftcircular(6);
+    }
+
+    //rrca 
+    case (instruction == 0b00001111){
+        OpCodes.rotaterightcircular(6);
+    }
+
+    //rla
+    case (instruction == 0b00010111){
+        OpCodes.rotateleft(6);
+    }
+
+    //rra 
+    case (instruction == 0b00011111){
+        OpCodes.rotateright(6);
+    }
+
+    //daa 
+    case (instruction == 0b00100111){
+        OpCodes.adjustAcc();
+    }
+    
+    //cpl
+    case (instruction == 0b00101111){
+        OpCodes.complement();
+    }
+
+    //scf - set carry flag
+    case (instruction == 0b00110111){
+        OpCodes.setCarryFlag();
+    }
+
+    //ccf - complement carry flag
+    case (instruction == 0b00111111){
+        OpCodes.ComplementCarryFlag();
+    }
+
+
+    //ld r16 imm16
+    case(instruction == 0b00000001){
+        int nextInstruction = ROM[pc + 1];
+        register.doubleRegistersArr[0] = nextInstruction;
+        pc+=2;
+    }
+
+
+    case(instruction == 0b00010001){
+        int nextInstruction = ROM[pc + 1];
+        register.doubleRegistersArr[1] = nextInstruction;
+        pc+=2;
+    }
+
+    case(instruction == 0b00100001){
+        int nextInstruction = ROM[pc + 1];
+        register.doubleRegistersArr[2] = nextInstruction;
+        pc+=2;
+    }
+
+    case(instruction == 0b00110001){
+        int nextInstruction = ROM[pc + 1];
+        register.doubleRegistersArr[3] = nextInstruction;
+        pc+=2;
+    }
+
+
+    //ld [r16mem], a
+    case(instruction == 0b00000010){
+        uint16_t addy = register.doubleRegistersArr[0];
+        uint16_t valueToStore = <uint16_t> register.registersArr[6];
+        RAM[addy] = valueToStore; 
+        pc += 1;
+    }
+
+    case(instruction == 0b00010010){
+        uint16_t addy = register.doubleRegistersArr[1];
+        uint16_t valueToStore = <uint16_t> register.registersArr[6];
+        RAM[addy] = valueToStore;
+        pc += 1;
+    } 
+    
+    case(instruction == 0b00 10 0010){
+        uint16_t addy = register.doubleRegistersArr[2];
+        uint16_t valueToStore = <uint16_t> register.registersArr[6];
+        RAM[addy] = valueToStore;
+        pc += 1;
+    }
+
+    case(instruction == 0b00110010){
+        uint16_t addy = register.doubleRegistersArr[3];
+        uint16_t valueToStore = <uint16_t> register.registersArr[6];
+        RAM[addy] = valueToStore;
+    }
+
+
+
+
+
+    //ld a, [r16mem]
+
+    //bc
+    case (instruction == 0b00001010) {
+        uint16_t addy = register.doubleRegistersArr[0]; 
+        register.registersArr[6] = RAM[addy];         
+        pc += 1;
+    }
+
+    //de
+    case (instruction == 0b00011010) {
+        uint16_t addy = register.doubleRegistersArr[1]; 
+        register.registersArr[6] = RAM[addy];           
+        pc += 1;
+    }
+
+    //hl
+    case (instruction == 0b00101010): {
+        uint16_t addy = register.doubleRegistersArr[2]; 
+        register.registersArr[6] = RAM[addy];           
+        pc += 1;
+    }
+
+    //af
+    case (instruction == 0b00111010): {
+        uint16_t addy = register.doubleRegistersArr[3]; 
+        register.registersArr[6] = RAM[addy];         
+        pc += 1;
+    }
+
+
+
+    //ld [imm16], sp
+    case (instruction == 0b00001000): {
+    uint16_t first = RAM[pc + 1] << 8;
+    uint16_t second = RAM[pc + 2];
+    uint16_t addy = first | second; 
+    RAM[addy] = globals.stackPtr & 0xFF;  
+    RAM[addy + 1] = (globals.stackPtr >> 8) & 0xFF;
+
+    pc += 3;  
+}
+
+
+
+    //inc r16 
+
+    //bc
+    case(instruction == 0b00 00 0011){
+        register.doubleRegistersArr[0] += 1;
+        pc+=1;
+    }
+
+    //de 
+    case(instruction == 0b00 01 0011){
+        register.doubleRegistersArr[1] += 1;
+        pc+=1;
+    }
+
+    //hl
+    case(instruction == 0b00 10 0011){
+        register.doubleRegistersArr[2] += 1;
+        pc+=1;
+    }
+
+    //af
+    case(instruction == 0b00 11 0011){
+        register.doubleRegistersArr[3] += 1;        
+        pc+=1;
+    }
+
+
+
+    //dec r16 
+
+    //bc
+    case(instruction == 0b00 00 1011){
+        register.doubleRegistersArr[0] -= 1;
+    }
+
+    //de 
+    case(instruction == 0b00 01 1011){
+        register.doubleRegistersArr[1] -= 1;
+    }
+
+    //hl
+    case(instruction == 0b00 10 1011){
+        register.doubleRegistersArr[2] -= 1;
+    }
+
+    //af
+    case(instruction == 0b00 11 1011){
+        register.doubleRegistersArr[3] -= 1;
+    }
+
+    //add hl, r16
+    //bc
+    case(instruction == 0b00 00 1001){
+        register.doubleRegistersArr[2] += register.doubleRegistersArr[0];
+    }
+
+    //de
+    case(instruction == 0b00 01 1001){
+        register.doubleRegistersArr[2] += register.doubleRegistersArr[1];
+    }
+
+    //hl
+    case(instruction == 0b00 10 1001){
+        register.doubleRegistersArr[2] += register.doubleRegistersArr[2];
+    }
+
+    //sp
+    case(instruction == 0b00 11 1001){
+        register.doubleRegistersArr[2] += register.doubleRegistersArr[3];
+    }
+
+
+    //inc r8
+    case(instruction == 0b00 000 100){
+        register.registersArr[0]+=1;
+    }
+
+    case(instruction == 0b00 001 100){
+        register.registersArr[1]+=1;
+    }
+
+    case(instruction == 0b00 010 100){
+        register.registersArr[2]+=1;
+    }
+
+    case(instruction == 0b00 011 100){
+        register.registersArr[3]+=1;
+    }
+
+    case(instruction == 0b00 100 100){
+        register.registersArr[4]+=1;
+    }
+
+    case(instruction == 0b00 101 100){
+        register.registersArr[5]+=1;
+    }
+
+    case(instruction == 0b00 111 100){
+        register.registersArr[6]+=1;
+    }
+
+
+    //dec r8
+    case(instruction == 0b00 000 101){
+        register.registersArr[0]-=1;
+    }
+
+    case(instruction == 0b00 001 101){
+        register.registersArr[1]-=1;
+    }
+
+    case(instruction == 0b00 010 101){
+        register.registersArr[2]-=1;
+    }
+
+    case(instruction == 0b00 011 101){
+        register.registersArr[3]-=1;
+    }
+
+    case(instruction == 0b00 100 101){
+        register.registersArr[4]-=1;
+    }
+
+    case(instruction == 0b00 101 101){
+        register.registersArr[5]-=1;
+    }
+
+    case(instruction == 0b00 111 101){
+        register.registersArr[6]-=1;
+    }
+
+
+    //ld r8, imm8 
+    case(instruction == 0b00 001 110){
+        register.registersArr[0] = ROM[pc + 1];
+    }
+
+
+    case(instruction == 0b00 010 110){
+        register.registersArr[1] = ROM[pc + 1];
+    }
+
+    case(instruction == 0b00 011 110){
+        register.registersArr[2] = ROM[pc + 1];
+        
+    }
+
+    case(instruction == 0b00 100 110){
+        register.registersArr[3] = ROM[pc + 1];
+        
+    }
+
+    case(instruction == 0b00 101 110){
+        register.registersArr[4] = ROM[pc + 1];
+    }
+
+    case(instruction == 0b00 111 110){
+        register.registersArr[5] = ROM[pc + 1];
+        
+    }
+
+
+
+
+
+
+
+
+
+
+
 
     //8 bit arithmetic operations
 
@@ -263,34 +579,41 @@ int executeLoop(){
 
 
 
-    //jp cond 
+    //jp cond, imm16
 
     //0 nz
     case((instruction) == 0b11000010){
+        uint16_t nextInstruction = ROM[pc + 1];
         if !(register.flagsregister.zero){
-            opcodes.jump();
+            opcodes.jump(nextInstruction);
         }
     }
 
     //1 z
     case((instruction) == 0b11001010){
+        uint16_t nextInstruction = ROM[pc + 1];
         if (register.flagsregister.zero){
-            opcodes.jump();
+            opcodes.jump(nextInstruction);
         }
+        pc += 2;
     }
 
     //2 nc
     case((instruction) == 0b11010010){
+          uint16_t nextInstruction = ROM[pc + 1];
         if !(register.flagsregister.carry){
-            opcodes.jump();
+            opcodes.jump(nextInstruction);
         }
+        pc += 2;
     }
 
     //3 c
     case((instruction) == 0b11011010){
+          uint16_t nextInstruction = ROM[pc + 1];
         if (register.flagsregister.carry){
-            opcodes.jump();
+            opcodes.jump(nextInstruction);
         }
+        pc+=2;
     }
 
     //reti 
@@ -302,9 +625,148 @@ int executeLoop(){
 
     //jp hl 
     case((instruction) = 0b11101001){
-        obkcodes
+        opcodes.jump(register.doubleRegistersArr[2]);
     }
     
+
+
+    //case call cond imm16
+  // 0 nz
+case ((instruction) == 0b11000100): {
+    uint8_t nextInstruction = ROM[pc + 1];
+    if (!(register.flagsregister.zero)) {
+        stack.push(nextInstruction); // Push address of the next instruction (after the CALL instruction)
+    }
+    pc += 2; // Move past the immediate 16-bit value
+}
+
+// 1 z
+case ((instruction) == 0b11001100): {
+    uint8_t nextInstruction = ROM[pc + 1];
+    if (register.flagsregister.zero) {
+        stack.push(nextInstruction); // Push address of the next instruction (after the CALL instruction)
+    }
+    pc += 2; // Move past the immediate 16-bit value
+}
+
+// 2 nc
+case ((instruction) == 0b11010100): {
+    uint16_t nextInstruction = ROM[pc + 1];
+    if (!(register.flagsregister.carry)) {
+        stack.push(nextInstruction); // Push address of the next instruction (after the CALL instruction)
+    }
+    pc += 2; // Move past the immediate 16-bit valued 
+}
+
+// 3 c
+case ((instruction) == 0b11011100): {
+    uint16_t nextInstruction = ROM[pc + 1];
+    if (register.flagsregister.carry) {
+        stack.push(nextInstruction); // Push address of the next instruction (after the CALL instruction)
+    }
+    pc += 2; // Move past the immediate 16-bit value
+}
+
+
+//call imm16
+case ((instruction) == 0b11001101){
+  uint16_t nextInstruction = ROM[pc + 1];
+  stack.push(pc + 1);
+  pc += 2;
+}
+
+
+
+//rst tgt3 
+
+
+//pop r16stk
+case ((instruction) == 0b11000001){
+  register.registersArr[0] = stack.pop();
+  pc += 1;
+}
+
+//1
+case ((instruction) == 0b11010001){
+  register.registersArr[1] = stack.pop();
+  pc += 1;
+}
+
+//2
+case ((instruction) == 0b11100001){
+  uint16_t nextInstruction = ROM[pc + 1];
+  register.registersArr[2] = stack.pop();
+  pc += 1;
+}
+
+
+//3
+case ((instruction) == 0b11110001){
+  uint16_t nextInstruction = ROM[pc + 1];
+  register.registersArr[3] = stack.pop();
+  pc += 1;
+}
+
+
+//push r16stk 
+
+//0
+case ((instruction) == 0b11000101){
+  uint16_t nextInstruction = ROM[pc + 1];
+  stack.push(register.registersArr[0]);
+  pc += 1;
+}
+
+//1
+case ((instruction) == 0b11010101){
+  uint16_t nextInstruction = ROM[pc + 1];
+  stack.push(register.registersArr[1]);
+  pc += 1;
+}
+
+//2
+case ((instruction) == 0b111100101){
+  uint8_t nextInstruction = ROM[pc + 1];
+  stack.push(register.registersArr[2]);
+  pc += 1;
+}
+
+
+//3
+case ((instruction) == 0b11110101){
+  uint8_t nextInstruction = ROM[pc + 1];
+  stack.push(register.registersArr[3]);
+  pc += 1;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//ldh [c] a
+
+
 
 
 
@@ -327,6 +789,9 @@ int executeLoop(){
 
 }
     
+
+
+
 instruction = instruction
 }
 return 0;

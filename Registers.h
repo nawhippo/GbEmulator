@@ -4,7 +4,7 @@
 class Registers {
     public:
         uint8_t registersArr[6]; //a b c d e h l acc
-        uint16_t doubleRegistersArr[3]; //bc hl af 
+        uint16_t doubleRegistersArr[3]; //bc de hl sp 
         // uint8_t accumulator;
 
     struct FlagsRegister {

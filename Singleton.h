@@ -8,7 +8,7 @@ class Singleton {
 Registers registers;
 uint8_t ROM[256];
 
-uint8_t RAM[256];
+uint8_t RAM[0x10000];
 
 uint8_t* ROMPTR;
 int programcounter;
