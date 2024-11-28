@@ -81,6 +81,106 @@ int executeLoop(){
     }
 
 
+    //$CB is switch that forces the next set of bytes to be interpreted as a different instruction
+    case (instruction == 0xCB){
+        uint8_t nextByte = ROM[pc + 1]; 
+        switch(nextByte){
+            uint8_t opcodeNoOperand = nextByte >> 3;
+            uint8_t bitPrefixTest = 0b01000000;
+            uint8_t resPrefixTest = 00b1000000;
+            uint8_t setTest = 0b11000000;
+            case(nextByte & bitPrefixTest != 0){
+                int operand = ((operand << 2) & 0b11100000) >> 3;
+                int index = operandTranslation(operand);
+                int index2 = operandTranslation(nextByte << 5);
+                bittestn(index,index2);
+            }
+            
+            case(nextByte & resPrefixTest != 0){
+                int operand = ((operand << 2) & 0b11100000) >> 3;
+                int index = operandTranslation(operand);
+                int index2 = operandTranslation(nextByte << 5);
+                bittestn(index,index2);
+            }
+
+            case(nextByte & setTest != 0){
+                int operand = ((operand << 2) & 0b11100000) >> 3;
+                int index = operandTranslation(operand);
+                int index2 = operandTranslation(nextByte << 5);
+                bittestn(index,index2);
+            }
+
+
+            case(opcodeNoOperand == 0b00000){
+                int operand = operandTranslation(nextByte << 5);
+                OpCodes.rotateleftncarry(operand);
+            }
+
+            case(opcodeNoOperand == 0b00001){
+                int operand = operandTranslation(nextByte << 5);
+                OpCodes.rotaterightncarry(operand);
+            }
+
+            case(opcodeNoOperand == 0b00001){
+                int operand = operandTranslation(nextByte << 5);
+                OpCodes.rotaterightncarry(operand);
+            }
+
+            case(opcodeNoOperand == 0b00010){
+                int operand = operandTranslation(nextByte << 5);
+                OpCodes.rotateleftn(operand);
+            }
+    
+            case(opcodeNoOperand == 0b00011){
+                int operand = operandTranslation(nextByte << 5);
+                OpCodes.rotaterightn(operand);
+            }
+
+            case(opcodeNoOperand == 0b00100){
+                int operand = operandTranslation(nextByte << 5);
+                OpCodes.shiftleftn(operand);
+            }
+
+            case(opcodeNoOperand == 0b00101){
+                int operand = operandTranslation(nextByte << 5);
+                OpCodes.shiftrightn(operand);
+            }
+
+            case(opcodeNoOperand == 0b00101){
+                int operand = operandTranslation(nextByte << 5);
+                OpCodes.shiftrightn(operand);
+            }
+
+            case(opcodeNoOperand == 0b00110){
+                int operand = operandTranslation(nextByte << 5);
+                OpCodes.swapn(operand);
+            }
+            
+            case(opcodeNoOperand == 0b00111){
+                int operand = operandTranslation(nextByte << 5);
+                OpCodes.shiftrightarithmetic(operand);
+            }
+
+        }
+        pc+=2; 
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     //rcla accumulator rotate right 
     case (instruction == 0b00000111){
         OpCodes.rotateleftcircular(6);

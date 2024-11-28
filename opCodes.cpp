@@ -113,7 +113,15 @@ void rotateleftthroughcarry(int destRegInd) {
     }
 }
 
+void shiftrightnarithmetic(int destRegInd){
+    if ((reg.registersArr[destRegInd] & 0b10000000) != 0){
+        reg.registersArr[destRegInd] = ((reg.registerArr[destRegInd] >> 1) | 0b10000000);
+    }
+}
 
+void testbit(int bitnumber, int destRegInd){
+    reg.registersArr[destRegInd]
+}
 
 
 void addntonwcarry(int destRegInd, int regAInd, int regBInd, int byteToAdd = -1) {
@@ -577,7 +585,7 @@ void shiftLeftRegn(int destRegInd){
     reg.registersArr[destRegInd] = reg.registersArr[destRegInd] << 1;
 }
 
-void swapRegn(int destRegInd){
+void swapn(int destRegInd){
     int left = (reg.registersArr[destRegInd] & 0b00001111) << 4;
     int right = (reg.registersArr[destRegInd] & 0b11110000) >> 4;
     reg.registersArr[destRegInd] = right | left;
@@ -646,5 +654,5 @@ void bittestn(int destRegInd, int bitno){
         reg.flagsRegister.zero = true;
     }
 }
-
+}
 }
