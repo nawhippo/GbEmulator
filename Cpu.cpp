@@ -71,7 +71,10 @@ int executeLoop(){
     switch(instruction){
     //pc is incremented by bytes of the instruction
     uint8_t instruction = ROM[pc];
+
+
     //1 byte instructional sets
+    //NOP
     case (instruction == 0x00){
         pc += 1;
     }
@@ -79,7 +82,6 @@ int executeLoop(){
     case (instruction == 0x76){
         pc+=1;
     }
-
 
     //rcla accumulator rotate right 
     case (instruction == 0b00000111){

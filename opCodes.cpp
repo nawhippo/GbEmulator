@@ -648,3 +648,5 @@ void bittestn(int destRegInd, int bitno){
 }
 
 }
+
+}

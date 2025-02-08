@@ -5,8 +5,6 @@ class Registers {
     public:
         uint8_t registersArr[6]; //a b c d e h l acc
         uint16_t doubleRegistersArr[3]; //bc de hl sp 
-        // uint8_t accumulator;
-
     struct FlagsRegister {
         bool zero;
         bool subtract;
@@ -30,29 +28,6 @@ class Registers {
     const int HALF_CARRY_FLAG_BYTE_POSITION = 5;
     const int CARRY_FLAG_BYTE_POSITION = 4; 
     
-
-
-
-
-//this tis to convert flags to binary and viceversa. 
-//     uint8_t setFlagsRegisterBinary(FlagsRegister flagsRegister, uint8_t num) {
-//      num |= (flagsRegister.zero ? 1 : 0) << ZERO_FLAG_BYTE_POSITION;
-//      num |= (flagsRegister.subtract ? 1 : 0) << SUBTRACT_FLAG_BYTE_POSITION;
-//      num |= (flagsRegister.half_carry ? 1 : 0) << HALF_CARRY_FLAG_BYTE_POSITION;
-//      num |= (flagsRegister.carry ? 1 : 0) << CARRY_FLAG_BYTE_POSITION;
-//      return num; 
-//     }
-
-
-// //half-carry set true if overflow from first nibble
-//     uint8_t setRegisterBinarytoFlags(uint8_t byte){
-//        //set the flag register back. 0b1 means 1 in binary notation. 
-//         bool zero = ((byte >> ZERO_FLAG_BYTE_POSITION) & 0b1) != 0;
-//         bool subtract = ((byte >> SUBTRACT_FLAG_BYTE_POSITION) & 0b1) != 0;
-//         bool half_carry = ((byte >> HALF_CARRY_FLAG_BYTE_POSITION) & 0b1) != 0;
-//         bool carry = ((byte >> CARRY_FLAG_BYTE_POSITION) & 0b1) != 0;
-
-
 
 //grabbing all 16 bit registers 
     uint8_t& getA(){
