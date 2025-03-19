@@ -1,105 +1,71 @@
-#include <stdint.h>
-#ifndef Registers.h
-#define Registers.h
+#ifndef REGISTERS_H
+#define REGISTERS_H
+
+#include <cstdint>
+
 class Registers {
-    public:
-        uint8_t registersArr[6]; //a b c d e h l acc
-        uint16_t doubleRegistersArr[3]; //bc de hl sp 
-    struct FlagsRegister {
+typedef uint16_t (*funcpointer)();
+public:
+    uint8_t registersArr[8]; //a, b, c, d, e, h, l, f
+
+
+    struct Flags {
         bool zero;
         bool subtract;
         bool half_carry;
         bool carry;
-        bool masterinterruptenable;
-        };
-        FlagsRegister flagsregister;
+    } flagsregister;
 
-    struct IORegister {
-        uint16_t InterruptEnableRegister;
-        uint16_t InterruptFlagRegister;
-        uint16_t InterruptMasterEnableRegister;
-    };
-        IORegister ioregister;
-
-
-    const int ZERO_FLAG_BYTE_POSITION = 7;
-    const int SUBTRACT_FLAG_BYTE_POSITION = 6;
-//half carry is to move lower byte carry to a higher byte. 
-    const int HALF_CARRY_FLAG_BYTE_POSITION = 5;
-    const int CARRY_FLAG_BYTE_POSITION = 4; 
-    
-
-//grabbing all 16 bit registers 
-    uint8_t& getA(){
-        return this->registersArr[0];
-    }
-
-    uint8_t& getB(){
-        return this->registersArr[1];
-    }
-
-
-    uint8_t& getC(){
-        return this->registersArr[2];
-    }
-
-    uint8_t& getD(){
-        return this->registersArr[3];
-    }
-
-    uint8_t& getE(){
-        return this->registersArr[4];
-    }
-
-    uint8_t& getF(){
-        return this->registersArr[5];
-    }
-
-
-    uint8_t& getH(){
-        return this->registersArr[6];
-    }
-
-   uint8_t& getL(){
-        return this->registersArr[7];
-    }
-
-
-
-    uint16_t& getBC(){
-        return this->doubleRegisterArr[0];
-    };
-    uint16_t& getHL(){
-        return this->doubleRegisterArr[1];
-    };
-    
-    uint16_t& getAF(){
-        return this->doubleRegisterArr[2];
+    enum Register {
+        A = 0, 
+        B = 1, 
+        C = 2, 
+        D = 3, 
+        E = 4, 
+        H = 5, 
+        L = 6, 
+        F = 7  
     };
 
-    //enable types of interrupts
-    //v=blank interrupt handler --= end of vertical blanking 0
-    //lcd stat interrupt, when lcd changes 1
-    //timer overflow, when the timer reachers zero 2
-    //serial transfer interrupt. - ie: connection cable, transfer when data has changed, is ready to transfer, has been transferred 3
-    //keypad interrupt 4
-    //5-7 reserved
-    uint16_t& getInterruptEnableRegister(){
-        return this->ioregister->InterruptEnableRegister;
+    //add methods for register operations here
+    uint16_t get16Register(Register indexHigh, Register indexLow){
+        return (registersArr[indexHigh] << 8 ) | registersArr[indexLow];
     }
-    
-    //status of interrupts
-    uint16_t& getInterruptFlagRegister(){
-        return this->ioregister->InterruptFlagRegister;
+
+    uint8_t convertFlagsTo8Bit(Flags &flags){
+        uint8_t result = 0;
+        result |= (flagsregister.zero ? 0b10000000 : 0);
+        result |= (flagsregister.subtract ? 0b01000000 : 0);
+        result |= (flagsregister.half_carry ? 0b00100000 : 0);
+        result |= (flagsregister.carry ? 0b00010000 : 0);
+        return result;
     }
-    
-    //wehter interrupts are allowed at all 
-    uint16_t& getInterruptMasterEnableRegister(){
-        return this->ioregister->InterruptMasterEnableRegister;
+
+    void modify16BitRegister(Register high, Register low, int16_t addValue) {
+        uint16_t registerValue = get16Register(high, low);  
+        registerValue += addValue;
+
+        registersArr[high] = static_cast<uint8_t>(registerValue >> 8);  
+        registersArr[low] = static_cast<uint8_t>(registerValue & 0xFF);
+    }
+
+
+    void load16BitRegister(Register high, Register low, uint16_t value) {
+        uint16_t currentValue = get16Register(high, low);
+        currentValue = value;
+
+        registersArr[high] = static_cast<uint8_t>(currentValue >> 8);
+        registersArr[low] = static_cast<uint8_t>(currentValue & 0xFF);
+}
+
+
+    void convert8BitToFlags(uint8_t &flags){
+        flagsregister.zero = (flags & 0b10000000) != 0;
+        flagsregister.subtract = (flags & 0b01000000) != 0;
+        flagsregister.half_carry = (flags & 0b00100000) != 0;
+        flagsregister.carry = (flags & 0b00010000) != 0;
     }
 };
-
-
 
 
 
