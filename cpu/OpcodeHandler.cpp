@@ -24,79 +24,37 @@ int& programCounter = globals.getProgramCounter();
 uint8_t ROM = globals.getROM();
 OpCodes opcodes; 
 
-//r8 operand translation
-Register operandTranslation(int translate){
-    switch(translate){
-    //b
-    case (translate == 0b000){
-        return B;
-    }
-    //c
-    case (translate == 0b001){
-        return C;
-    }
-    //d
-    case (translate == 0b010){
-        return D;
-    }
-    //e
-    case (translate == 0b011){
-        return E;
-    }
-    //h
-    case (translate == 0b100){
-        return H;
-    }
-    //l
-    case (translate == 0b101){
-        return L;
-    }
-
-    //hl (special addy)
-    case (translate == 0b110){
-        return register.get16
-    }
-    case (translate == 0b111){
-        return 0;
-    }
+// r8 operand translation
+uint8_t& operandTranslation(int translate) {
+    switch (translate) {
+        case 0b000: // B
+            return register.registersArr[Registers::B];
+        case 0b001: // C
+            return register.registersArr[Registers::C];
+        case 0b010: // D
+            return register.registersArr[Registers::D];
+        case 0b011: // E
+            return register.registersArr[Registers::E];
+        case 0b100: // H
+            return register.registersArr[Registers::H];
+        case 0b101: // L
+            return register.registersArr[Registers::L];
+        case 0b110: { // (HL)
+            uint16_t hlAddress = register.get16Register(Registers::H, Registers::L);
+            return globals.getRAM()[hlAddress];
+        }
+        case 0b111: // A
+            return register.registersArr[Registers::A];
+        default:
+            throw std::invalid_argument("Invalid operand translation");
     }
 }
-
-
-
 
 int execute(){ 
     uint16_t instruction = ROM[pc];
     result = executeInstruction(instruction);
     return result;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 int executeInstruction(uint16_t instruction){
