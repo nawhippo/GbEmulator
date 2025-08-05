@@ -1,12 +1,13 @@
 #include <singleton.h>
 
-class ROMLoader {
-Singleton& singleton = singleton::getSingleton();
-initROM(){
-
-}
+class MemoryBus {
+Singleton& singleton = singleton::getInstance();
 
 
+//CPU Memory Bus
+    struct MemoryBus {
+        uint8_t memory[0XFFFF];
+    } memorybus;
 
 
 

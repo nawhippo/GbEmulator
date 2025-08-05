@@ -3,48 +3,51 @@
 #include <unordered_map>
 #include <opCodes.cpp>
 
-
-
-//instructinos 4 to 8 bits long
-//uint16_ts can be passed as indices to RAM
-
-//TODO: IMM 8 block 3
-//$CB PREFIXES
-
-
-//max len of instructional set it 3 bytes
 int pc = 0x100;
 int cycle = 0;
 
 
 class OpcodeHandler {
 Singleton globals = Singleton.getInstance();
-Registers register = globals.getRegisters();
+RegisterEnum myRegisters = globals.getRegisters();
 int& programCounter = globals.getProgramCounter();
 uint8_t ROM = globals.getROM();
 OpCodes opcodes; 
+
+enum RegisterEnum {
+        A = 0, 
+        B = 1, 
+        C = 2, 
+        D = 3, 
+        E = 4, 
+        H = 5, 
+        L = 6, 
+        F = 7  
+    };
+
+
 
 // r8 operand translation
 uint8_t& operandTranslation(int translate) {
     switch (translate) {
         case 0b000: // B
-            return register.registersArr[Registers::B];
+            return myRegisters.registersArr[RegisterEnum::B];
         case 0b001: // C
-            return register.registersArr[Registers::C];
+            return myRegisters.registersArr[RegisterEnum::C];
         case 0b010: // D
-            return register.registersArr[Registers::D];
+            return myRegisters.registersArr[RegisterEnum::D];
         case 0b011: // E
-            return register.registersArr[Registers::E];
+            return myRegisters.registersArr[RegisterEnum::E];
         case 0b100: // H
-            return register.registersArr[Registers::H];
+            return myRegisters.registersArr[RegisterEnum::H];
         case 0b101: // L
-            return register.registersArr[Registers::L];
+            return myRegisters.registersArr[RegisterEnum::L];
         case 0b110: { // (HL)
-            uint16_t hlAddress = register.get16Register(Registers::H, Registers::L);
+            uint16_t hlAddress = myRegisters.get16Register(RegisterEnum::H, RegisterEnum::L);
             return globals.getRAM()[hlAddress];
         }
         case 0b111: // A
-            return register.registersArr[Registers::A];
+            return myRegisters.registersArr[RegisterEnum::A];
         default:
             throw std::invalid_argument("Invalid operand translation");
     }
@@ -72,14 +75,14 @@ int executeInstruction(uint16_t instruction){
  // Rotate A left (RL)
     case (instruction == 0b00000111): {
         uint8_t carry = flagsregister.carry;
-        // Rotate the A register left, shifting bit 7 into the carry and bit 0 into A
-        uint8_t result = registersArr[Register::A] << 1 | carry;
+        // Rotate the A myRegisters left, shifting bit 7 into the carry and bit 0 into A
+        uint8_t result = registersArr[RegisterEnum::A] << 1 | carry;
         
-        // Update the A register with the result
-        registersArr[Register::A] = result;
+        // Update the A myRegisters with the result
+        registersArr[RegisterEnum::A] = result;
         
         // Update carry flag based on the old bit 7 of A
-        flagsregister.carry = (registersArr[Register::A] >> 7) & 1;
+        flagsregister.carry = (registersArr[RegisterEnum::A] >> 7) & 1;
         
         pc += 1;
         break;
@@ -88,14 +91,14 @@ int executeInstruction(uint16_t instruction){
     // Rotate A right (RR)
     case (instruction == 0b00001111): {
         uint8_t carry = flagsregister.carry;
-        // Rotate the A register right, shifting bit 0 into the carry and bit 7 into A
-        uint8_t result = registersArr[Register::A] >> 1 | (carry << 7);
+        // Rotate the A myRegisters right, shifting bit 0 into the carry and bit 7 into A
+        uint8_t result = registersArr[RegisterEnum::A] >> 1 | (carry << 7);
         
-        // Update the A register with the result
-        registersArr[Register::A] = result;
+        // Update the A myRegisters with the result
+        registersArr[RegisterEnum::A] = result;
         
         // Update carry flag based on the old bit 0 of A
-        flagsregister.carry = registersArr[Register::A] & 1;
+        flagsregister.carry = registersArr[RegisterEnum::A] & 1;
         
         pc += 1;
         break;
@@ -104,14 +107,14 @@ int executeInstruction(uint16_t instruction){
     // Rotate A left through carry (RLA)
     case (instruction == 0b00010111): {
         uint8_t carry = flagsregister.carry;
-        // Rotate the A register left through carry
-        uint8_t result = (registersArr[Register::A] << 1) | carry;
+        // Rotate the A myRegisters left through carry
+        uint8_t result = (registersArr[RegisterEnum::A] << 1) | carry;
         
-        // Update the A register with the result
-        registersArr[Register::A] = result;
+        // Update the A myRegisters with the result
+        registersArr[RegisterEnum::A] = result;
         
         // Update the carry flag based on the old bit 7 of A
-        flagsregister.carry = (registersArr[Register::A] >> 7) & 1;
+        flagsregister.carry = (registersArr[RegisterEnum::A] >> 7) & 1;
         
         pc += 1;
         break;
@@ -120,14 +123,14 @@ int executeInstruction(uint16_t instruction){
     // Rotate A right through carry (RRA)
     case (instruction == 0b00011111): {
         uint8_t carry = flagsregister.carry;
-        // Rotate the A register right through carry
-        uint8_t result = (registersArr[Register::A] >> 1) | (carry << 7);
+        // Rotate the A myRegisters right through carry
+        uint8_t result = (registersArr[RegisterEnum::A] >> 1) | (carry << 7);
         
-        // Update the A register with the result
-        registersArr[Register::A] = result;
+        // Update the A myRegisters with the result
+        registersArr[RegisterEnum::A] = result;
         
         // Update the carry flag based on the old bit 0 of A
-        flagsregister.carry = registersArr[Register::A] & 1;
+        flagsregister.carry = registersArr[RegisterEnum::A] & 1;
         
         pc += 1;
         break;
@@ -135,7 +138,7 @@ int executeInstruction(uint16_t instruction){
 
     // Decimal Adjust Accumulator (DAA)
     case (instruction == 0b00100111): {
-        uint8_t A = registersArr[Register::A];
+        uint8_t A = registersArr[RegisterEnum::A];
         
         if ((A & 0x0F) > 9 || flagsregister.half_carry) {
             A += 0x06;
@@ -147,8 +150,8 @@ int executeInstruction(uint16_t instruction){
             flagsregister.carry = 0;
         }
         
-        // Update the A register with the result
-        registersArr[Register::A] = A;
+        // Update the A myRegisters with the result
+        registersArr[RegisterEnum::A] = A;
         
         // Reset the half-carry flag
         flagsregister.half_carry = 0;
@@ -160,7 +163,7 @@ int executeInstruction(uint16_t instruction){
     // Complement (CPL)
     case (instruction == 0b00101111): {
         // Complement all the bits in A
-        registersArr[Register::A] = ~registersArr[Register::A];
+        registersArr[RegisterEnum::A] = ~registersArr[RegisterEnum::A];
         
         // Set the half-carry flag
         flagsregister.half_carry = 1;
@@ -204,7 +207,7 @@ case (instruction == 0b00000001): {
     uint8_t lowByte = ROM[pc + 1];
     uint8_t highByte = ROM[pc + 2];
     uint16_t nextInstruction = (highByte << 8) | lowByte;
-    register.load16BitRegister(Register::B, Register::C, nextInstruction);
+    myRegisters.load16BitRegister(RegisterEnum::B, RegisterEnum::C, nextInstruction);
     pc += 3; // 1 byte for opcode + 2 bytes for imm16
 }
 
@@ -213,7 +216,7 @@ case (instruction == 0b00010001): {
     uint8_t lowByte = ROM[pc + 1];
     uint8_t highByte = ROM[pc + 2];
     uint16_t nextInstruction = (highByte << 8) | lowByte;
-    register.load16BitRegister(Register::D, Register::E, nextInstruction);
+    myRegisters.load16BitRegister(RegisterEnum::D, RegisterEnum::E, nextInstruction);
     pc += 3; // 1 byte for opcode + 2 bytes for imm16
 }
 
@@ -222,7 +225,7 @@ case (instruction == 0b00100001): {
     uint8_t lowByte = ROM[pc + 1];
     uint8_t highByte = ROM[pc + 2];
     uint16_t nextInstruction = (highByte << 8) | lowByte;
-    register.load16BitRegister(Register::H, Register::L, nextInstruction);
+    myRegisters.load16BitRegister(RegisterEnum::H, RegisterEnum::L, nextInstruction);
     pc += 3; // 1 byte for opcode + 2 bytes for imm16
 }
 
@@ -231,7 +234,7 @@ case (instruction == 0b00110001): {
     uint8_t lowByte = ROM[pc + 1];
     uint8_t highByte = ROM[pc + 2];
     uint16_t nextInstruction = (highByte << 8) | lowByte;
-    register.load16BitRegister(Register::S, Register::P, nextInstruction);
+    myRegisters.load16BitRegister(RegisterEnum::S, RegisterEnum::P, nextInstruction);
     pc += 3; // 1 byte for opcode + 2 bytes for imm16
 }
 
@@ -241,29 +244,29 @@ case (instruction == 0b00110001): {
 
 // BC
 case (instruction == 0b00001010): {
-    uint16_t addy = register.get16BitRegister(Register::B, Register::C);
-    register.registersArr[6] = RAM[addy];
+    uint16_t addy = myRegisters.get16BitRegister(RegisterEnum::B, RegisterEnum::C);
+    myRegisters.registersArr[6] = RAM[addy];
     pc += 1; // Move past the opcode
 }
 
 // DE
 case (instruction == 0b00011010): {
-    uint16_t addy = register.get16BitRegister(Register::D, Register::E);
-    register.registersArr[6] = RAM[addy];
+    uint16_t addy = myRegisters.get16BitRegister(RegisterEnum::D, RegisterEnum::E);
+    myRegisters.registersArr[6] = RAM[addy];
     pc += 1; // Move past the opcode
 }
 
 // HL
 case (instruction == 0b00101010): {
-    uint16_t addy = register.get16BitRegister(Register::H, Register::L);
-    register.registersArr[6] = RAM[addy];
+    uint16_t addy = myRegisters.get16BitRegister(RegisterEnum::H, RegisterEnum::L);
+    myRegisters.registersArr[6] = RAM[addy];
     pc += 1; // Move past the opcode
 }
 
 // AF
 case (instruction == 0b00111010): {
-    uint16_t addy = register.get16BitRegister(Register::A, Register::F); 
-    register.registersArr[6] = RAM[addy];
+    uint16_t addy = myRegisters.get16BitRegister(RegisterEnum::A, RegisterEnum::F); 
+    myRegisters.registersArr[6] = RAM[addy];
     pc += 1; // Move past the opcode
 }
 
@@ -285,172 +288,172 @@ case (instruction == 0b00111010): {
 // INC r16
 
 case (instruction == 0b00000011): {
-    register.modify16BitRegister(Register::B, Register::C, 1);
+    myRegisters.modify16BitRegister(RegisterEnum::B, RegisterEnum::C, 1);
     pc += 1;
 }
 
 case (instruction == 0b00010011): {
-    register.modify16BitRegister(Register::D, Register::E, 1);
+    myRegisters.modify16BitRegister(RegisterEnum::D, RegisterEnum::E, 1);
     pc += 1;
 }
 
 case (instruction == 0b00100011): {
-    register.modify16BitRegister(Register::H, Register::L, 1);
+    myRegisters.modify16BitRegister(RegisterEnum::H, RegisterEnum::L, 1);
     pc += 1;
 }
 
 case (instruction == 0b00110011): {
-    register.modify16BitRegister(Register::A, Register::F, 1);
+    myRegisters.modify16BitRegister(RegisterEnum::A, RegisterEnum::F, 1);
     pc += 1;
 }
 
 //dec r16 
 case(instruction == 0b0000001011): {
-    register.modify16BitRegister(Register::B, Register::C, -1);
+    myRegisters.modify16BitRegister(RegisterEnum::B, RegisterEnum::C, -1);
     pc += 1;
 }
 
 case(instruction == 0b0001101011): {
-    register.modify16BitRegister(Register::D, Register::E, -1);
+    myRegisters.modify16BitRegister(RegisterEnum::D, RegisterEnum::E, -1);
     pc += 1;
 }
 
 case(instruction == 0b0010101011): {
-    register.modify16BitRegister(Register::H, Register::L, -1);
+    myRegisters.modify16BitRegister(RegisterEnum::H, RegisterEnum::L, -1);
     pc += 1;
 }
 
 case(instruction == 0b0011101011): {
-    register.modify16BitRegister(Register::A, Register::F, -1);
+    myRegisters.modify16BitRegister(RegisterEnum::A, RegisterEnum::F, -1);
     pc += 1;
 }
 
 //add hl, r16
 case(instruction == 0b0000001001): {
-    uint16_t valueToAdd = register.get16Register(Register::B, Register::C);
-    register.modify16BitRegister(Register::H, Register::L, valueToAdd);
+    uint16_t valueToAdd = myRegisters.get16Register(RegisterEnum::B, RegisterEnum::C);
+    myRegisters.modify16BitRegister(RegisterEnum::H, RegisterEnum::L, valueToAdd);
     pc += 1;
 }
 
 case(instruction == 0b0001101001): {
-    uint16_t valueToAdd = register.get16Register(Register::D, Register::E);
-    register.modify16BitRegister(Register::H, Register::L, valueToAdd);
+    uint16_t valueToAdd = myRegisters.get16Register(RegisterEnum::D, RegisterEnum::E);
+    myRegisters.modify16BitRegister(RegisterEnum::H, RegisterEnum::L, valueToAdd);
     pc += 1;
 }
 
 case(instruction == 0b0010101001): {
-    uint16_t valueToAdd = register.get16Register(Register::H, Register::L);
-    register.modify16BitRegister(Register::H, Register::L, valueToAdd);
+    uint16_t valueToAdd = myRegisters.get16Register(RegisterEnum::H, RegisterEnum::L);
+    myRegisters.modify16BitRegister(RegisterEnum::H, RegisterEnum::L, valueToAdd);
     pc += 1;
 }
 
 case(instruction == 0b0011101001): {
-    uint16_t valueToAdd = register.get16Register(Register::A, Register::F);
-    register.modify16BitRegister(Register::H, Register::L, valueToAdd);
+    uint16_t valueToAdd = myRegisters.get16Register(RegisterEnum::A, RegisterEnum::F);
+    myRegisters.modify16BitRegister(RegisterEnum::H, RegisterEnum::L, valueToAdd);
     pc += 1;
 }
 
     //inc r8
 case(instruction == 0b000000100): {
-    register.registersArr[Register::B] += 1;
+    myRegisters.registersArr[RegisterEnum::B] += 1;
     pc += 1;
 }
 
 case(instruction == 0b000001100): {
-    register.registersArr[Register::C] += 1;
+    myRegisters.registersArr[RegisterEnum::C] += 1;
     pc += 1;
 }
 
 case(instruction == 0b000010100): {
-    register.registersArr[Register::D] += 1;
+    myRegisters.registersArr[RegisterEnum::D] += 1;
     pc += 1;
 }
 
 case(instruction == 0b000011100): {
-    register.registersArr[Register::E] += 1;
+    myRegisters.registersArr[RegisterEnum::E] += 1;
     pc += 1;
 }
 
 case(instruction == 0b000100100): {
-    register.registersArr[Register::H] += 1;
+    myRegisters.registersArr[RegisterEnum::H] += 1;
     pc += 1;
 }
 
 case(instruction == 0b000101100): {
-    register.registersArr[Register::L] += 1;
+    myRegisters.registersArr[RegisterEnum::L] += 1;
     pc += 1;
 }
 
 case(instruction == 0b000111100): {
-    register.registersArr[Register::F] += 1;
+    myRegisters.registersArr[RegisterEnum::F] += 1;
     pc += 1;
 }
 
 //dec r8
 case(instruction == 0b000000101): {
-    register.registersArr[Register::A] -= 1;
+    myRegisters.registersArr[RegisterEnum::A] -= 1;
     pc += 1;
 }
 
 case(instruction == 0b000001101): {
-    register.registersArr[Register::B] -= 1;
+    myRegisters.registersArr[RegisterEnum::B] -= 1;
     pc += 1;
 }
 
 case(instruction == 0b000010101): {
-    register.registersArr[Register::C] -= 1;
+    myRegisters.registersArr[RegisterEnum::C] -= 1;
     pc += 1;
 }
 
 case(instruction == 0b000011101): {
-    register.registersArr[Register::D] -= 1;
+    myRegisters.registersArr[RegisterEnum::D] -= 1;
     pc += 1;
 }
 
 case(instruction == 0b000100101): {
-    register.registersArr[Register::E] -= 1;
+    myRegisters.registersArr[RegisterEnum::E] -= 1;
     pc += 1;
 }
 
 case(instruction == 0b000101101): {
-    register.registersArr[Register::H] -= 1;
+    myRegisters.registersArr[RegisterEnum::H] -= 1;
     pc += 1;
 }
 
 case(instruction == 0b000111101): {
-    register.registersArr[Register::L] -= 1;
+    myRegisters.registersArr[RegisterEnum::L] -= 1;
     pc += 1;
 }
 
 
 //ld r8, imm8
 case(instruction == 0b000001110): {
-    register.registersArr[Register::A] = ROM[pc + 1];
+    myRegisters.registersArr[RegisterEnum::A] = ROM[pc + 1];
     pc += 2;
 }
 
 case(instruction == 0b000010110): {
-    register.registersArr[Register::B] = ROM[pc + 1];
+    myRegisters.registersArr[RegisterEnum::B] = ROM[pc + 1];
     pc += 2;
 }
 
 case(instruction == 0b000011110): {
-    register.registersArr[Register::C] = ROM[pc + 1];
+    myRegisters.registersArr[RegisterEnum::C] = ROM[pc + 1];
     pc += 2;
 }
 
 case(instruction == 0b000100110): {
-    register.registersArr[Register::D] = ROM[pc + 1];
+    myRegisters.registersArr[RegisterEnum::D] = ROM[pc + 1];
     pc += 2;
 }
 
 case(instruction == 0b000101110): {
-    register.registersArr[Register::E] = ROM[pc + 1];
+    myRegisters.registersArr[RegisterEnum::E] = ROM[pc + 1];
     pc += 2;
 }
 
 case(instruction == 0b000111110): {
-    register.registersArr[Register::H] = ROM[pc + 1];
+    myRegisters.registersArr[RegisterEnum::H] = ROM[pc + 1];
     pc += 2;
 }
 
@@ -459,11 +462,11 @@ case(instruction == 0b000111110): {
 // Add to accumulator
 case ((instruction & 0xF8) == 0b10000000): {  // 0x80 -> 10000000
     int a = operandTranslation(instruction >> 6);  // Get the operand
-    register.registersArr[Register::A] += a;  // Add operand to the accumulator
-    register.flagsregister.zero = (register.registersArr[Register::A] == 0);
-    register.flagsregister.subtract = false;
-    register.flagsregister.half_carry = ((register.registersArr[Register::A] & 0x0F) < (a & 0x0F));
-    register.flagsregister.carry = (register.registersArr[Register::A] > 0xFF);
+    myRegisters.registersArr[RegisterEnum::A] += a;  // Add operand to the accumulator
+    myRegisters.flagsregister.zero = (myRegisters.registersArr[RegisterEnum::A] == 0);
+    myRegisters.flagsregister.subtract = false;
+    myRegisters.flagsregister.half_carry = ((myRegisters.registersArr[RegisterEnum::A] & 0x0F) < (a & 0x0F));
+    myRegisters.flagsregister.carry = (myRegisters.registersArr[RegisterEnum::A] > 0xFF);
     pc += 1;
     break;
 }
@@ -471,12 +474,12 @@ case ((instruction & 0xF8) == 0b10000000): {  // 0x80 -> 10000000
 // Add with carry
 case ((instruction & 0xF8) == 0b10000110): {  // 0x86 -> 10000110
     int a = operandTranslation(instruction >> 6);  // Get the operand
-    uint16_t result = register.registersArr[Register::A] + a + (register.flagsregister.carry ? 1 : 0);  // Add with carry
-    register.registersArr[Register::A] = result & 0xFF;  // Keep only the lower 8 bits
-    register.flagsregister.zero = (register.registersArr[Register::A] == 0);
-    register.flagsregister.subtract = false;
-    register.flagsregister.half_carry = ((register.registersArr[Register::A] & 0x0F) < (a & 0x0F) + (register.flagsregister.carry ? 1 : 0));
-    register.flagsregister.carry = (result > 0xFF);  // Carry flag if overflow
+    uint16_t result = myRegisters.registersArr[RegisterEnum::A] + a + (myRegisters.flagsregister.carry ? 1 : 0);  // Add with carry
+    myRegisters.registersArr[RegisterEnum::A] = result & 0xFF;  // Keep only the lower 8 bits
+    myRegisters.flagsregister.zero = (myRegisters.registersArr[RegisterEnum::A] == 0);
+    myRegisters.flagsregister.subtract = false;
+    myRegisters.flagsregister.half_carry = ((myRegisters.registersArr[RegisterEnum::A] & 0x0F) < (a & 0x0F) + (myRegisters.flagsregister.carry ? 1 : 0));
+    myRegisters.flagsregister.carry = (result > 0xFF);  // Carry flag if overflow
     pc += 1;
     break;
 }
@@ -484,11 +487,11 @@ case ((instruction & 0xF8) == 0b10000110): {  // 0x86 -> 10000110
 // Subtract from accumulator
 case ((instruction & 0xF8) == 0b10001010): {  // 0x8A -> 10001010
     int a = operandTranslation(instruction >> 6);  // Get the operand
-    register.registersArr[Register::A] -= a;  // Subtract operand from the accumulator
-    register.flagsregister.zero = (register.registersArr[Register::A] == 0);
-    register.flagsregister.subtract = true;
-    register.flagsregister.half_carry = ((register.registersArr[Register::A] & 0x0F) > (a & 0x0F));  // Check for half-carry
-    register.flagsregister.carry = (register.registersArr[Register::A] > 0xFF);  // Carry flag set if result is negative
+    myRegisters.registersArr[RegisterEnum::A] -= a;  // Subtract operand from the accumulator
+    myRegisters.flagsregister.zero = (myRegisters.registersArr[RegisterEnum::A] == 0);
+    myRegisters.flagsregister.subtract = true;
+    myRegisters.flagsregister.half_carry = ((myRegisters.registersArr[RegisterEnum::A] & 0x0F) > (a & 0x0F));  // Check for half-carry
+    myRegisters.flagsregister.carry = (myRegisters.registersArr[RegisterEnum::A] > 0xFF);  // Carry flag set if result is negative
     pc += 1;
     break;
 }
@@ -496,12 +499,12 @@ case ((instruction & 0xF8) == 0b10001010): {  // 0x8A -> 10001010
 // Subtract with carry
 case ((instruction & 0xF8) == 0b10001110): {  // 0x8E -> 10001110
     int a = operandTranslation(instruction >> 6);  // Get the operand
-    uint16_t result = register.registersArr[Register::A] - a - (register.flagsregister.carry ? 1 : 0);  // Subtract with carry
-    register.registersArr[Register::A] = result & 0xFF;  // Keep only the lower 8 bits
-    register.flagsregister.zero = (register.registersArr[Register::A] == 0);
-    register.flagsregister.subtract = true;
-    register.flagsregister.half_carry = ((register.registersArr[Register::A] & 0x0F) > (a & 0x0F) + (register.flagsregister.carry ? 1 : 0));
-    register.flagsregister.carry = (result > 0xFF);  // Carry flag if underflow
+    uint16_t result = myRegisters.registersArr[RegisterEnum::A] - a - (myRegisters.flagsregister.carry ? 1 : 0);  // Subtract with carry
+    myRegisters.registersArr[RegisterEnum::A] = result & 0xFF;  // Keep only the lower 8 bits
+    myRegisters.flagsregister.zero = (myRegisters.registersArr[RegisterEnum::A] == 0);
+    myRegisters.flagsregister.subtract = true;
+    myRegisters.flagsregister.half_carry = ((myRegisters.registersArr[RegisterEnum::A] & 0x0F) > (a & 0x0F) + (myRegisters.flagsregister.carry ? 1 : 0));
+    myRegisters.flagsregister.carry = (result > 0xFF);  // Carry flag if underflow
     pc += 1;
     break;
 }
@@ -509,11 +512,11 @@ case ((instruction & 0xF8) == 0b10001110): {  // 0x8E -> 10001110
 // AND with accumulator
 case ((instruction & 0xF8) == 0b10100110): {  // 0xA6 -> 10100110
     int a = operandTranslation(instruction >> 6);  // Get the operand
-    register.registersArr[Register::A] &= a;  // Perform AND operation with accumulator
-    register.flagsregister.zero = (register.registersArr[Register::A] == 0);
-    register.flagsregister.subtract = false;
-    register.flagsregister.half_carry = true;  // Half-carry is always set for AND
-    register.flagsregister.carry = false;  // No carry for AND
+    myRegisters.registersArr[RegisterEnum::A] &= a;  // Perform AND operation with accumulator
+    myRegisters.flagsregister.zero = (myRegisters.registersArr[RegisterEnum::A] == 0);
+    myRegisters.flagsregister.subtract = false;
+    myRegisters.flagsregister.half_carry = true;  // Half-carry is always set for AND
+    myRegisters.flagsregister.carry = false;  // No carry for AND
     pc += 1;
     break;
 }
@@ -527,7 +530,7 @@ case ((instruction & 0xF8) == 0b10100110): {  // 0xA6 -> 10100110
     //3 c
     // RET nz (return if zero flag is not set)
 case((instruction) == 0b11000000): {
-    if (!(register.flagsregister.zero)) {  // Check if zero flag is not set
+    if (!(myRegisters.flagsregister.zero)) {  // Check if zero flag is not set
         globals.pop();  // Pop address from stack
     }
     pc += 1;  // Move program counter to the next instruction
@@ -536,7 +539,7 @@ case((instruction) == 0b11000000): {
 
 // RET z (return if zero flag is set)
 case((instruction) == 0b11001000): {
-    if (register.flagsregister.zero) {  // Check if zero flag is set
+    if (myRegisters.flagsregister.zero) {  // Check if zero flag is set
         globals.pop();  // Pop address from stack
     }
     pc += 1;  // Move program counter to the next instruction
@@ -545,7 +548,7 @@ case((instruction) == 0b11001000): {
 
 // RET nc (return if carry flag is not set)
 case((instruction) == 0b11010000): {
-    if (!(register.flagsregister.carry)) {  // Check if carry flag is not set
+    if (!(myRegisters.flagsregister.carry)) {  // Check if carry flag is not set
         globals.pop();  // Pop address from stack
     }
     pc += 1;  // Move program counter to the next instruction
@@ -554,7 +557,7 @@ case((instruction) == 0b11010000): {
 
 // RET c (return if carry flag is set)
 case((instruction) == 0b11011000): {
-    if (register.flagsregister.carry) {  // Check if carry flag is set
+    if (myRegisters.flagsregister.carry) {  // Check if carry flag is set
         globals.pop();  // Pop address from stack
     }
     pc += 1;  // Move program counter to the next instruction
@@ -586,7 +589,7 @@ case((instruction) == 0b11001001): {  // 0xC9 for RETI
 // Jump if zero flag is not set
 case((instruction) == 0b11000010): {
     uint16_t nextInstruction = ROM[pc + 1] | (ROM[pc + 2] << 8);  // Read 16-bit address
-    if (!(register.flagsregister.zero)) {
+    if (!(myRegisters.flagsregister.zero)) {
         opcodes.jump(nextInstruction);  // Jump to address
     }
     pc += 3;  // Move the program counter by 3 (2 bytes for the address)
@@ -596,7 +599,7 @@ case((instruction) == 0b11000010): {
 // Jump if zero flag is set
 case((instruction) == 0b11001010): {
     uint16_t nextInstruction = ROM[pc + 1] | (ROM[pc + 2] << 8);  // Read 16-bit address
-    if (register.flagsregister.zero) {
+    if (myRegisters.flagsregister.zero) {
         opcodes.jump(nextInstruction);  // Jump to address
     }
     pc += 3;  // Move the program counter by 3 (2 bytes for the address)
@@ -606,7 +609,7 @@ case((instruction) == 0b11001010): {
 // Jump if carry flag is not set
 case((instruction) == 0b11010010): {
     uint16_t nextInstruction = ROM[pc + 1] | (ROM[pc + 2] << 8);  // Read 16-bit address
-    if (!(register.flagsregister.carry)) {
+    if (!(myRegisters.flagsregister.carry)) {
         opcodes.jump(nextInstruction);  // Jump to address
     }
     pc += 3;  // Move the program counter by 3 (2 bytes for the address)
@@ -616,7 +619,7 @@ case((instruction) == 0b11010010): {
 // Jump if carry flag is set
 case((instruction) == 0b11011010): {
     uint16_t nextInstruction = ROM[pc + 1] | (ROM[pc + 2] << 8);  // Read 16-bit address
-    if (register.flagsregister.carry) {
+    if (myRegisters.flagsregister.carry) {
         opcodes.jump(nextInstruction);  // Jump to address
     }
     pc += 3;  // Move the program counter by 3 (2 bytes for the address)
@@ -626,14 +629,14 @@ case((instruction) == 0b11011010): {
 // REti (Return from Interrupt)
 case((instruction) == 0b11011001): {
     globals.pop();  // Pop the return address from the stack
-    register.flagsregister.masterinterruptenable = true;  // Enable interrupts
+    myRegisters.flagsregister.masterinterruptenable = true;  // Enable interrupts
     pc += 1;  // Move to the next instruction
     break;
 }
 
-// Jump to HL register (JP HL)
+// Jump to HL myRegisters (JP HL)
 case((instruction) == 0b11101001): {
-    uint16_t hlValue = register.get16Register(H, L);  // Get 16-bit value from HL register
+    uint16_t hlValue = myRegisters.get16Register(H, L);  // Get 16-bit value from HL myRegisters
     opcodes.jump(hlValue);  // Jump to the address in HL
     pc += 1;  // Move the program counter to the next instruction
     break;
@@ -645,7 +648,7 @@ case((instruction) == 0b11101001): {
 // 0 nz (CALL if zero flag is not set)
 case ((instruction) == 0b11000100): {
     uint16_t nextInstruction = ROM[pc + 1] | (ROM[pc + 2] << 8);  // Read 16-bit address from ROM
-    if (!(register.flagsregister.zero)) {
+    if (!(myRegisters.flagsregister.zero)) {
         stack.push(nextInstruction);  // Push address of next instruction to the stack
         opcodes.jump(nextInstruction);  // Jump to the target address
     }
@@ -656,7 +659,7 @@ case ((instruction) == 0b11000100): {
 // 1 z (CALL if zero flag is set)
 case ((instruction) == 0b11001100): {
     uint16_t nextInstruction = ROM[pc + 1] | (ROM[pc + 2] << 8);  // Read 16-bit address from ROM
-    if (register.flagsregister.zero) {
+    if (myRegisters.flagsregister.zero) {
         stack.push(nextInstruction);  // Push address of next instruction to the stack
         opcodes.jump(nextInstruction);  // Jump to the target address
     }
@@ -667,7 +670,7 @@ case ((instruction) == 0b11001100): {
 // 2 nc (CALL if carry flag is not set)
 case ((instruction) == 0b11010100): {
     uint16_t nextInstruction = ROM[pc + 1] | (ROM[pc + 2] << 8);  // Read 16-bit address from ROM
-    if (!(register.flagsregister.carry)) {
+    if (!(myRegisters.flagsregister.carry)) {
         stack.push(nextInstruction);  // Push address of next instruction to the stack
         opcodes.jump(nextInstruction);  // Jump to the target address
     }
@@ -678,7 +681,7 @@ case ((instruction) == 0b11010100): {
 // 3 c (CALL if carry flag is set)
 case ((instruction) == 0b11011100): {
     uint16_t nextInstruction = ROM[pc + 1] | (ROM[pc + 2] << 8);  // Read 16-bit address from ROM
-    if (register.flagsregister.carry) {
+    if (myRegisters.flagsregister.carry) {
         stack.push(nextInstruction);  // Push address of next instruction to the stack
         opcodes.jump(nextInstruction);  // Jump to the target address
     }
@@ -710,7 +713,7 @@ case ((instruction) == 0b11001101): {
 // POP BC
 case ((instruction) == 0b11000001): {
     uint16_t value = stack.pop();  // Pop the 16-bit value from the stack
-    register.set16Register(Register::B, Register::C, value);  // Set the BC register pair
+    myRegisters.set16Register(RegisterEnum::B, RegisterEnum::C, value);  // Set the BC myRegisters pair
     pc += 1;  // Move past the instruction byte
     break;
 }
@@ -720,7 +723,7 @@ case ((instruction) == 0b11000001): {
 // POP DE
 case ((instruction) == 0b11010001): {
     uint16_t value = stack.pop();  // Pop the 16-bit value from the stack
-    register.set16Register(Register::D, Register::E, value);  // Set the DE register pair
+    myRegisters.set16Register(RegisterEnum::D, RegisterEnum::E, value);  // Set the DE myRegisters pair
     pc += 1;  // Move past the instruction byte
     break;
 } 
@@ -728,7 +731,7 @@ case ((instruction) == 0b11010001): {
 // POP HL
 case ((instruction) == 0b11100001): {
     uint16_t value = stack.pop();  // Pop the 16-bit value from the stack
-    register.set16Register(Register::H, Register::L, value);  // Set the HL register pair
+    myRegisters.load16BitRegister(RegisterEnum::H, RegisterEnum::L, value);  // Set the HL myRegisters pair
     pc += 1;  // Move past the instruction byte
     break;
 }
@@ -737,7 +740,7 @@ case ((instruction) == 0b11100001): {
 // POP AF
 case ((instruction) == 0b11110001): {
     uint16_t value = stack.pop();  // Pop the 16-bit value from the stack
-    register.set16Register(Register::A, Register::F, value);  // Set the AF register pair
+    myRegisters.load16BitRegister(RegisterEnum::A, RegisterEnum::F, value);  // Set the AF myRegisters pair
     pc += 1;  // Move past the instruction byte
     break;
 }
@@ -749,7 +752,7 @@ case ((instruction) == 0b11110001): {
 
 // PUSH BC
 case ((instruction) == 0b11000101): {
-    uint16_t value = register.get16Register(Register::B, Register::C);  // Get the value from BC
+    uint16_t value = myRegisters.get16Register(RegisterEnum::B, RegisterEnum::C);  // Get the value from BC
     stack.push(value);  // Push the 16-bit value onto the stack
     pc += 1;  // Move past the instruction byte
     break;
@@ -757,7 +760,7 @@ case ((instruction) == 0b11000101): {
 
 // PUSH DE
 case ((instruction) == 0b11010101): {
-    uint16_t value = register.get16Register(Register::D, Register::E);  // Get the value from DE
+    uint16_t value = myRegisters.get16Register(RegisterEnum::D, RegisterEnum::E);  // Get the value from DE
     stack.push(value);  // Push the 16-bit value onto the stack
     pc += 1;  // Move past the instruction byte
     break;
@@ -766,34 +769,21 @@ case ((instruction) == 0b11010101): {
 
 // PUSH HL
 case ((instruction) == 0b11110010): {
-    uint16_t value = register.get16Register(Register::H, Register::L);  // Get the value from HL
+    uint16_t value = myRegisters.get16Register(RegisterEnum::H, RegisterEnum::L);  // Get the value from HL
     stack.push(value);  // Push the 16-bit value onto the stack
     pc += 1;  // Move past the instruction byte
     break;
 }
-
 
 // PUSH AF
 case ((instruction) == 0b11110101): {
-    uint16_t value = register.get16Register(Register::A, Register::F);  // Get the value from AF
+    uint16_t value = myRegisters.get16Register(RegisterEnum::A, RegisterEnum::F);  // Get the value from AF
     stack.push(value);  // Push the 16-bit value onto the stack
     pc += 1;  // Move past the instruction byte
     break;
 }
 
 }
-
-
-//ldh [c] a
-
-
-
-
-
-
-
-
-
 
 
     //HALT
@@ -808,22 +798,5 @@ case ((instruction) == 0b11110101): {
     //2bytes instructional sets
 
 }
-    
-
-
-
-instruction = instruction
-}
 return 0;
 }
-
-
-
-
-
-
-
-
-
-
-

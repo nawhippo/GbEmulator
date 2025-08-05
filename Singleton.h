@@ -16,12 +16,6 @@ class Singleton {
 
 
 
-//CPU Memory Bus
-    struct MemoryBus {
-        uint8_t memory[0XFFFF];
-    } memorybus;
-
-
 
 public:
     static Singleton& getInstance(){
@@ -81,7 +75,7 @@ void step(){
 
 }
 
-
+//cannot init 
 private:
     Singleton() {
     }
