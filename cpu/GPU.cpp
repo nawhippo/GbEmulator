@@ -9,10 +9,4 @@ static const uint8_t VRAM_SIZE = VRAM_END - VRAM_BEGIN + 1;
 uint8_t vram[VRAM_SIZE];
 Tile tile_set[384];
 
-
-
-
-
-
-
 };
