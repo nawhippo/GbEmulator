@@ -2,8 +2,6 @@
 #include <cstdint>
 #include <algorithm>
 
-class Tile { 
-
 enum TilePixelValue : uint8_t {
     Zero,
     One,
@@ -11,6 +9,7 @@ enum TilePixelValue : uint8_t {
     Three,
 };
 
+class Tile { 
 TilePixelValue arr[8][8];
 
 //tile factory function
@@ -22,7 +21,4 @@ Tile* init_tile() {
 }
     return this;
 }
-
-
-
 };
