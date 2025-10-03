@@ -6,20 +6,22 @@
 class GPU {
 Tile tile_set[384];
 //vram should be a part of the memory bus 
-
 Singleton& singleton = singleton.getInstance();
 uint8_t* VRAM = singleton.getVRAM();
 
-
+//OAM - ($8000-9FFF) (a section of ram)
+//VRAM - ($FE00-FE9F) - background and tile data. 
 
 //presumably loading tiles 
 //tile ram is accessed at addresses $9800-98FF
 //oam $8000-8FFF w/ unsigned numbering 
 
-//40 sprites in oam - same format as bg tiles 
+//40 sprites (160 bytes) in oam - same format as bg tiles 
 //all have 4 bytes determining object attributes
-//byte 0 - y pos
-//byte 1 - x pos
+//byte 0 - y pos + 16
+//byte 1 - x pos + 8
+//byte 2 - Tile Index
+//byte 3 - Attributes(palette, flip, priority)
 //attr flags  7 priority 6 y flip 5 x flip 4 dmg palette 3 bank 2 1 0 - cgb paletted 
 
 
@@ -56,7 +58,8 @@ uint8_t* VRAM = singleton.getVRAM();
 //bitplane 1 is more sig than bit plane 0 - they both determine the color of a row
 
 
-uint8_t translateColor(uint8_t 2bits){
+//when background - certain palette, when object - 0 is transparent
+uint8_t translateColor(uint8_t 2bits, int mode){
     switch(2bit) {
     case 0:
         return 225;
@@ -65,19 +68,26 @@ uint8_t translateColor(uint8_t 2bits){
     case 2:
         return 125;
     case 3:
+        //MODE 2 means sprite 
+        if (mode == 2){
+            return -1;
+        }
         return 0;
     }
 
-//we draw row by row 
-uint8_t drawTile(uint8_t curr){
+//we draw row by row - how to designate what tiles to cache
+uint8_t drawTile(uint8_t curr, int tileindex){
+    //this should run every draw cycle
     //this is the current tile in vram
     //little endian
+    int mode = 2;
     bool background = false;
     if (curr > 0x9799 and curr < 0x9BFF - 0x0001){
         background = true;
+        mode = 1;
     }
     int wide = 160;
-    int height =  144; 
+    int height = 144; 
     //16 bit row.. 2 bit color
     for (int y = 0; y < 144; y++){
             for (int x = 0; x < 161; x++){
@@ -85,14 +95,19 @@ uint8_t drawTile(uint8_t curr){
             uint8_t hi = VRAM[curr+1];
             int bit = 7 - i;
             int color = ((hi >> bit) & 1) << 1 | ((low >> bit) & 1);
-            int color = translateColor(color);
-            if (x % 8 == 0){
-
-                curr+=2;
-                //after translating the 2 byte into a row of color, we render it, and then empty the array
+            int color = translateColor(color, mode);
+            if (color == -1){
+                SDL_SetRenderDrawColor(renderer, 0, 0, color, 0);
+            } else {
+                SDL_SetRenderDrawColor(renderer, 0, 0, color, 255);
             }
+            //color indices are palettes 
+            SDL_RenderDrawPoint(renderer, x, y);
+            if (x % 8 == 0){
+                curr+=2; 
+            };
     };
-}
+};
 }
 
 
@@ -107,29 +122,15 @@ int init_SDL(int argc, char* argv[]){
     if (screen == NULL){
         fprintf(stderror, "Couldn't initialize 640x480x4 video made: %s\n", SDL_GetError());
         exit(-1);
-    }
+    }   
     SDL_Window *win = SDL_CreateWindow("Session",
         SDL_WINDOWPOS_CENTERED, SDLWINDOWPOS_CENTERED, 640, 480 0);
-    SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
-    exit(0); 
+    SDL_Renderer* ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
+    SDL_Texture* tex = SDL_CreateTexture(renderer, SL);
+    return 0; 
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 };
+
+
+
 }
