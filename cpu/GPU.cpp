@@ -59,7 +59,7 @@ uint8_t* VRAM = singleton.getVRAM();
 
 
 //when background - certain palette, when object - 0 is transparent
-uint8_t translateColor(uint8_t 2bits, int mode){
+uint8_t translateColor(uint8_t 2bits, bool background){
     switch(2bit) {
     case 0:
         return 225;
@@ -69,7 +69,7 @@ uint8_t translateColor(uint8_t 2bits, int mode){
         return 125;
     case 3:
         //MODE 2 means sprite 
-        if (mode == 2){
+        if (background == false){
             return -1;
         }
         return 0;
@@ -80,11 +80,9 @@ uint8_t drawTile(uint8_t curr, int tileindex){
     //this should run every draw cycle
     //this is the current tile in vram
     //little endian
-    int mode = 2;
     bool background = false;
     if (curr > 0x9799 and curr < 0x9BFF - 0x0001){
         background = true;
-        mode = 1;
     }
     int wide = 160;
     int height = 144; 
@@ -95,9 +93,9 @@ uint8_t drawTile(uint8_t curr, int tileindex){
             uint8_t hi = VRAM[curr+1];
             int bit = 7 - i;
             int color = ((hi >> bit) & 1) << 1 | ((low >> bit) & 1);
-            int color = translateColor(color, mode);
+            int color = translateColor(color, background);
             if (color == -1){
-                SDL_SetRenderDrawColor(renderer, 0, 0, color, 0);
+                SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
             } else {
                 SDL_SetRenderDrawColor(renderer, 0, 0, color, 255);
             }
@@ -127,6 +125,7 @@ int init_SDL(int argc, char* argv[]){
         SDL_WINDOWPOS_CENTERED, SDLWINDOWPOS_CENTERED, 640, 480 0);
     SDL_Renderer* ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
     SDL_Texture* tex = SDL_CreateTexture(renderer, SL);
+
     return 0; 
     }
 };
