@@ -1,17 +1,19 @@
 #include <stdio.h>
 #include <cstdint>
 #include <algorithm>
-#include <tile.h>
+#include "Singleton.h"
 #include <SDL.h>
 class GPU {
-Tile tile_set[384];
 //vram should be a part of the memory bus 
 Singleton& singleton = singleton.getInstance();
 uint8_t* VRAM = singleton.getVRAM();
-
-//OAM - ($8000-9FFF) (a section of ram)
-//VRAM - ($FE00-FE9F) - background and tile data. 
-
+SDL_Renderer* renderer;
+SDL_Surface* screen;
+SDL_Event event;
+SDL_Texture* texture;
+SDL_WWindow* window;
+uint8_t* OAM = singleton.getOAM();
+uint8_t LCDC = *singleton.lcdc;
 //presumably loading tiles 
 //tile ram is accessed at addresses $9800-98FF
 //oam $8000-8FFF w/ unsigned numbering 
@@ -60,6 +62,7 @@ uint8_t* VRAM = singleton.getVRAM();
 
 //when background - certain palette, when object - 0 is transparent
 uint8_t translateColor(uint8_t 2bits, bool background){
+    //color values
     switch(2bit) {
     case 0:
         return 225;
@@ -76,59 +79,113 @@ uint8_t translateColor(uint8_t 2bits, bool background){
     }
 
 //we draw row by row - how to designate what tiles to cache
-uint8_t drawTile(uint8_t curr, int tileindex){
+//this should only be in address space (
+uint8_t Process_Pixel_Data(uint8_t curr, uint8_t tileindex, SDL_Renderer* renderer){
     //this should run every draw cycle
     //this is the current tile in vram
     //little endian
-    bool background = false;
-    if (curr > 0x9799 and curr < 0x9BFF - 0x0001){
-        background = true;
-    }
     int wide = 160;
     int height = 144; 
     //16 bit row.. 2 bit color
     for (int y = 0; y < 144; y++){
-            for (int x = 0; x < 161; x++){
-            uint8_t lo = VRAM[curr];
-            uint8_t hi = VRAM[curr+1];
-            int bit = 7 - i;
-            int color = ((hi >> bit) & 1) << 1 | ((low >> bit) & 1);
-            int color = translateColor(color, background);
-            if (color == -1){
-                SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
-            } else {
-                SDL_SetRenderDrawColor(renderer, 0, 0, color, 255);
-            }
-            //color indices are palettes 
-            SDL_RenderDrawPoint(renderer, x, y);
-            if (x % 8 == 0){
-                curr+=2; 
-            };
+        //we dr
+            for (int x = 0; x < 160; x++){
+                //this is 8 pixels, not 16 - they are combined. 
+                uint8_t lo = VRAM[curr];
+                uint8_t hi = VRAM[curr+1];
+                int bit = 7 - x;
+                //colors are 2bit values - row data is a series of 
+                //this boils it down to just 2 bits 
+                int color = ((hi >> bit) & 1) << 1 | ((low >> bit) & 1);
+                int color = translateColor(color, background);
+                if (color == -1){
+                    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+                } else {
+                    SDL_SetRenderDrawColor(renderer, 0, 0, color, 255);
+                }
+                //WHEN WE DRAW SPRITES WE NEED TO CHECK PRIOEIRT 
+                //color indices are palettes - 16 bits per palette. 
+                SDL_RenderDrawPoint(renderer, x, y);
+                if (x % 16 == 0){
+                    curr+=2; 
+                };
     };
 };
 }
 
 
+//the bg tilemap is 256 x 256 pixels - 32 x 32 tiles
+//scroll x and y are background tile coords
+
+//we read scx and scy from io registers
+//we also check lcdc register to see which tile map to use
+//then the resultant address is where we begin processing pixels. 
+uint8_t get_tilerow_index(uint16_t address, uint8_t scrollX, singleton.){
+    //tile indexes map to an addy in pure vram data. 
+    uint16_t addy = (scrollX + scrollY) % 8;
+    return addy;
+}
+
+
 
 int init_SDL(int argc, char* argv[]){
-    if((SDL_Init(SDL_INIT_VIDEO|SLD_INIT_AUDIO)==-1)) {
+    if((SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO)==-1)) {
         printf("Could not initialize SDL: %s.\n", SDL_GetError());
         exit(-1);
     }
     //4 bit pixel depth settings 
     screen = SDL_SetVideoMode(640, 480, 4, SDL_SWSURFACE|SDL_ANYFORMAT);
     if (screen == NULL){
-        fprintf(stderror, "Couldn't initialize 640x480x4 video made: %s\n", SDL_GetError());
+        printf(stderror, "Couldn't initialize 640x480x4 video made: %s\n", SDL_GetError());
         exit(-1);
     }   
-    SDL_Window *win = SDL_CreateWindow("Session",
-        SDL_WINDOWPOS_CENTERED, SDLWINDOWPOS_CENTERED, 640, 480 0);
-    SDL_Renderer* ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
-    SDL_Texture* tex = SDL_CreateTexture(renderer, SL);
-
+    this.window = SDL_CreateWindow("Session",
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, 0);
+    this.renderer = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
+    this.texture = SDL_CreateTexture(renderer, SL);
     return 0; 
     }
 };
+
+
+
+
+int read_oam(int index){
+    //each object is 4 bytes 
+    //byte 1 x pos
+    //byte 2 tile ind
+    //byte 3 attributes
+    //7 priority 6 y flip 5 x flip 4 dmg palette 3 bank (only in cgb NA) 2 1 0 - cgb paletted
+    uint8_t* OAM = singleton.getOAM();
+    uint8_t y_pos = OAM[index];
+    uint8_t x_pos = OAM[index + 1];
+    uint8_t attributes = OAM[index + 2];
+
+    uint8_t priority = attributes >> 7 & 0b1;
+    uint8_t y_flip = attributes >> 6 & 0b1;
+    uint8_t x_flip = attributes >> 5 & 0b1;
+    uint8_t dmg_palette = attributes >> 4 & 0b1;
+    uint8_t bank = attributes >> 3 & 0b1;
+    uint8_t cgb_palette = attributes & 0b111;
+    return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
