@@ -13,7 +13,7 @@ RegisterEnum myRegisters = globals.getRegisters();
 int& programCounter = globals.getProgramCounter();
 uint8_t ROM = globals.getROM();
 OpCodes opcodes; 
-
+public: 
 enum RegisterEnum {
         A = 0, 
         B = 1, 
@@ -51,12 +51,6 @@ uint8_t& operandTranslation(int translate) {
         default:
             throw std::invalid_argument("Invalid operand translation");
     }
-}
-
-int execute(){ 
-    uint16_t instruction = ROM[pc];
-    result = executeInstruction(instruction);
-    return result;
 }
 
 
