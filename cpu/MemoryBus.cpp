@@ -32,11 +32,11 @@ class MemoryBus
     {
         if (address <= 0x3FFF)
         { // 0000–3FFF: ROM Bank 0
-            return singleton.getROM()[address];
+            return singleton.getROMBank0()[address];
         }
         else if (address >= 0x4000 && address <= 0x7FFF)
         { // 4000–7FFF: ROM Bank N
-            return singleton.getROM()[address];
+            return singleton.getROMBankN()[address - 0x4000];
         }
         else if (address >= 0x8000 && address <= 0x9FFF)
         { // 8000–9FFF: VRAM
@@ -156,6 +156,8 @@ class MemoryBus
     {
         return -1; // any exception counts as failure
     }
+    return 0;
+}
 
     // tile set should be cached.
 
@@ -166,7 +168,7 @@ class MemoryBus
             throw std::out_of_range("Address out of VRAM range");
         }
         return singleton.getVRAM()[address - 0x8000];
-    };
+    }
 
     uint8_t &writeVram(uint16_t address, uint8_t index_value, uint8_t value)
     {
@@ -202,7 +204,5 @@ class MemoryBus
         case (1, 1):
             return 3; // black
         };
-    };
-
-}   
+    }
 }
