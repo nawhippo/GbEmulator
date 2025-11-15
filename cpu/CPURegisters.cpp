@@ -2,7 +2,7 @@
 #include <cstdint>
 
 
-class CPURegisters {
+class CPURegistersFunctions{
 typedef uint16_t (*funcpointer)();
 public:
     uint8_t registersArr[8]; //a, b, c, d, e, h, l, f
@@ -32,7 +32,6 @@ public:
     void addto16BitRegister(uint8_t high, uint8_t low, int16_t addValue) {
         uint16_t registerValue = get16Register(high, low);  
         registerValue += addValue;
-
         registersArr[high] = static_cast<uint8_t>(registerValue >> 8);  
         registersArr[low] = static_cast<uint8_t>(registerValue & 0xFF);
     }

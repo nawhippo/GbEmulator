@@ -4,6 +4,7 @@
 
 class Registers {
 typedef uint16_t (*funcpointer)();
+
 Registers::Registers() {
 for (int i = 0; i < 8; ++i){
     registersArr[i] = 0;
@@ -11,7 +12,7 @@ for (int i = 0; i < 8; ++i){
 flagsregister = {false, false, false, false};
 }
 
-//opcode access registers, explicit addreses do not
+
 public:
     uint8_t registersArr[8]; //a, b, c, d, e, h, l, f
 
