@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <algorithm>
 #include "Singleton.h"
-#include <SDL.h>
+#include <SDL2.h>
 class GPU {
 //vram should be a part of the memory bus 
 Singleton& singleton = Singleton::getInstance();
@@ -12,7 +12,7 @@ SDL_Renderer* renderer;
 SDL_Surface* screen;
 SDL_Event event;
 SDL_Texture* texture;
-SDL_Window* window = 
+SDL_Window* window = nullptr;
 uint8_t* OAM = singleton.getOAM();
 uint8_t* lcdc = singleton.getLCDC();
 
@@ -97,85 +97,97 @@ uint8_t translateColor(uint8_t bits, bool background){
     case 3:
         //MODE 2 means sprite 
         if (background == false){
-            return -1;
+            return 255; // Return white instead of -1
         }
+        return 0;
+    default:
         return 0;
     }
 }
 
-//we draw row by row - how to designate what tiles to cache
-//this should only be in address space (
 uint8_t process_background_pixel_data(uint8_t curr, uint8_t tileindex, SDL_Renderer* renderer){
     //16 bit row.. 2 bit color
     //tiles are arranged in memory row by row for individual tiles, not gestalt scanlines.
-    uint8_t* tilemapbool = (*(singleton.getLCDC()) >> 3) & 0x1;
-    uint8_t* tiledatabool (*(singleton.getLCDC()) >> 4) & 0x1;
-    uint8_t* tilemapchoose (*(singleton.getLCDC()) >> 6) & 0x1;
+    uint8_t tilemapbool = (*lcdc >> 3) & 0x1;
+    uint8_t tiledatabool = (*lcdc >> 4) & 0x1;
+    uint8_t tilemapchoose = (*lcdc >> 6) & 0x1;
     //window scroll
-    uint8_t WY = memorybus[FF4A];
-    uint8_t WX = memorybus[FF4B];
-    bool windowEnabled = (*(singleton.getLCDC() >> 5) & 1);
+    uint8_t WY = memorybus[0xFF4A];
+    uint8_t WX = memorybus[0xFF4B];
+    bool nonGBCModeWindowToggle = (*lcdc & 1);
+    bool windowEnabled = (*lcdc >> 5) & 1;
 
-    uint8_t* mapbase;
-    uint8_t* database;
+    uint16_t mapbase;
+    uint16_t database;
     if (tilemapbool == 0){
         mapbase = 0x9800;
     }
     if (tilemapbool == 1){
         mapbase = 0x9C00;
     }
-   if (tiledatapool == 0){
+    if (tiledatabool == 0){
         database = 0x8800;
     }
-    if (tiledatapool == 1){
+    if (tiledatabool == 1){
         database = 0x8000;
     }
-   
-    if (windowEnabled & (tilemapbool == 1)){
+    
+    uint16_t windowMapPtrBase = 0x9800;
+    if (windowEnabled & (tilemapbool == 1) & nonGBCModeWindowToggle){
         windowMapPtrBase = 0x9800; 
     } 
-    if (windowEnabled & (tilemapbool == 0)){
+    if (windowEnabled & (tilemapbool == 0) & nonGBCModeWindowToggle){
         windowMapPtrBase = 0x9C00;
     }
 
-    //Tomorrow deal with mappipg the window
-    uint8_t* TileMapPtr = memorybus[mapbase];
-    uint8_t* TileDataPtr = memorybus[database];
-    uint8_t* scrollX = &singleton.getSCX();
-    uint8_t* scrollY = &singleton.getSCY();
-    uint8_t* WY = 
-   for (int screenY = 0; screenY < height; screenY++) {
+    uint8_t* TileMapPtr = &memorybus[mapbase];
+    uint8_t* TileDataPtr = &memorybus[database];
+    uint8_t* scrollX = singleton.getSCX();
+    uint8_t* scrollY = singleton.getSCY();
+    int wide = 160;
+    int height = 144;
+    
+    for (int screenY = 0; screenY < height; screenY++) {
         for (int screenX = 0; screenX < wide; screenX++) {
-            if ((screenX > 7) & (screenX < 166) & (screenY < 143) & (windowEnabled) & (ScreenX > WX) & (ScreenY < WY)){
-                uint8_t* windowIndexMap = &memorybus[windowMpaPtrBase];
-                uint8_t bgX = (screenX + scrollX) & 0xFF;
-                uint8_t bgY = (screenY + scrollY) & 0xFF;
+            if ((screenX > 7) & (screenX < 166) & (screenY < 143) & (windowEnabled) & (screenX > WX) & (screenY < WY)){
+                uint8_t* windowIndexMap = &memorybus[windowMapPtrBase];
+                uint8_t bgX = (screenX + *scrollX) & 0xFF;
+                uint8_t bgY = (screenY + *scrollY) & 0xFF;
                 uint8_t tileX = bgX / 8;
                 uint8_t tileY = bgY / 8;
-                uint8_t tileIndex = memorybus[WindowMapPtrBase + (tileY * 32 + tileX)];
                 uint8_t pixelX = bgX % 8;
                 uint8_t pixelY = bgY % 8;
+                uint8_t tileIndex = windowIndexMap[tileY * 32 + tileX];
+                uint16_t tileDataAddr = database + (tileIndex * 16) + (pixelY * 2);
+                uint8_t lo = memorybus[tileDataAddr];
+                uint8_t hi = memorybus[tileDataAddr + 1];
+                int bit = 7 - pixelX;
+                uint8_t color = (((hi >> bit) & 1) << 1 | ((lo >> bit) & 1)) & 0xFF;
+                color = translateColor(color, true);
+                SDL_SetRenderDrawColor(renderer, color, color, color, 255);
+                SDL_RenderDrawPoint(renderer, screenX, screenY);
+            } else {
+                uint8_t bgX = (screenX + *scrollX) & 0xFF;
+                uint8_t bgY = (screenY + *scrollY) & 0xFF;
+                uint8_t tileX = bgX / 8;
+                uint8_t tileY = bgY / 8;
+                uint8_t tileIndex = TileMapPtr[tileY * 32 + tileX];
+                uint8_t pixelX = bgX % 8;
+                uint8_t pixelY = bgY % 8;
+                
+                uint16_t tileDataAddr = database + (tileIndex * 16) + (pixelY * 2);
+                uint8_t lo = memorybus[tileDataAddr];
+                uint8_t hi = memorybus[tileDataAddr + 1];
+                
+                int bit = 7 - pixelX;
+                int color = ((hi >> bit) & 1) << 1 | ((lo >> bit) & 1);
+                color = translateColor(color, true);
+                SDL_SetRenderDrawColor(renderer, color, color, color, 255);
+                SDL_RenderDrawPoint(renderer, screenX, screenY);
             }
-            uint8_t bgX = (screenX + scrollX) & 0xFF;
-            uint8_t bgY = (screenY + scrollY) & 0xFF;
-            uint8_t tileX = bgX / 8;
-            uint8_t tileY = bgY / 8;
-            //because the window isn't visible below coordinate 7
-            uint8_t tileIndex = TileMapPtr[tileY * 32 + tileX];
-            uint8_t pixelX = bgX % 8;
-            uint8_t pixelY = bgY % 8;
-            
-            // NOW use the 16-byte offset to get tile data  
-            uint16_t tileDataAddr = database + (tileIndex * 16) + (pixelY * 2);
-            uint8_t lo = memorybus[tileDataAddr];
-            uint8_t hi = memorybus[tileDataAddr + 1];
-            
-            // Extract pixel
-            int bit = 7 - pixelX;
-            int color = ((hi >> bit) & 1) << 1 | ((lo >> bit) & 1);
-            SDL_RenderDrawPoint(renderer, screenX, screenY);
         }
     }
+    return 0;
 }
 
 uint8_t process_object_pixel_data(int8_t curr, uint8_t tileindex, SDL_Renderer* renderer){
@@ -186,12 +198,12 @@ uint8_t process_object_pixel_data(int8_t curr, uint8_t tileindex, SDL_Renderer* 
     int height = 144; 
 
     //16 bit row.. 2 bit color
-    uint8_t* scrollx = singleton.getSCX();
-    scrolly = singleton.getSCY();
-    uint8_t* tilemapbool = (singleton.getLCDC() >> 3) & 1;
-    uint8_t* tiledatabool (singleton.getLCDC() >> 4) & 1;
-    uint8_t mapbase;
-    uint8_t database;
+    uint8_t* scrollX = singleton.getSCX();
+    uint8_t* scrollY = singleton.getSCY();
+    uint8_t tilemapbool = (*lcdc >> 3) & 1;
+    uint8_t tiledatabool = (*lcdc >> 4) & 1;
+    uint16_t mapbase;
+    uint16_t database;
     if (tilemapbool == 0){
         mapbase = 0x9800;
     }
@@ -200,103 +212,59 @@ uint8_t process_object_pixel_data(int8_t curr, uint8_t tileindex, SDL_Renderer* 
     }
 
     //tile data for objects is always 8000
-    database = 0x8000
-    TileMapPtr = &memorybus[mapbase];
-    OAMblock = singleton.getOAM();
-    for (int y = 0; y < height; y++){
-        //we dr
-            for (int x = 0; x < wide; x++){
-                //no palettes being used in non gbc mode
-                //this is 8 pixels, not 16 - they are combined. 
-                bgx = (x + Scrollx) & 0xFF;
-                bgy = (y + Scrolly) & 0xFF;
-                tilex = bgx / 8;
-                tiley = bgy / 8;
-                //16x16 bits for a two bit color depth - the memory unit is uint8_t so /8 hence 32 tile y.
-                //32 x 32 tile index grid (each tile index is 1 byte and there are 32 tiles in a row so)
-                uint8_t tileIndex = TileMapPtr[tiley * 32 + tilex]; 
-                //16 bytes for tile
-                uint8_t *tileDataPtr = memorybus[0x8000 + tileIndex * 16];
-
-                get_color 
-
-
-
-                pixelx = bgx % 8;
-                pixely = bgy % 8;
-                uint8_t lo = oam[curr];
-                uint8_t hi = oam[curr+1];
-                uint8_t* OAMBlock = singleton.getOAM();
-                uint16_t OAMData = *(OAMBlock + index) << 8 & *(OAMBlock + 1 + index); 
-                uint8_t y_pos = OAMData >> 8 & 0xFF;
-                uint8_t x_pos = OAMData & 0xFF;
-                uint8_t attributes = OAMBlock[index + 2];
-                uint8_t priority = attributes >> 7 & 0b1;
-                uint8_t y_flip = attributes >> 6 & 0b1;
-                uint8_t x_flip = attributes >> 5 & 0b1;
-                uint8_t bank = attributes >> 3 & 0b1;
-                uint8_t bgX = (x + scrollX) & 0xFF;
-                uint8_t bgY = (y + scrollY) & 0xFF;
-                int bit = 7 - x;
-
-                //colors are 2bit values - row data is a series of
-                //this boils it down to just 2 bit
-                int color = ((hi >> bit) & 1) << 1 | (( >> bit) & 1);
-  
-
-
-                //handle priority
-                if (dmg_palette == 0) {
-                    int color = translateColor(color, false);
-                } else {
-                    int color = translateColor(color, true);
-                }
-                
-
-
-                int color = translateColor(color, false);
-                if (color == -1){
-                    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
-                } else {
-                    SDL_SetRenderDrawColor(renderer, 0, 0, color, 255);
-                }
-                //16 bits per palette. 
-                x_coord = x_flip ? wide - x : x;
-                y_coord = y_flip ? height - y : y;
-                
-                SDL_RenderDrawPoint(renderer, x, y);
-                if (x % 16 == 0){
-                    curr+=2; 
-                };
-    };
-};
-}
-
-uint8_t process_window_data(uint8_t curr){
-    //if bit 1 is set in non gbc mode (default) and bit 5 generally.
-    bool windowDisplayed = ((*(lcdc) >> 5) & 0x1) & (*(lcdc) & 0x1);
-    uint8_t *windowYScroll = memorybus[FF4A];
-    uint8_t *windowXScroll = memorybus[FF4B];
+    database = 0x8000;
+    uint8_t* TileMapPtr = &memorybus[mapbase];
+    uint8_t* OAMblock = singleton.getOAM();
     
-    if (windowDisplayed == True){
-        for (int y = 0; y < 144; y++){
-            for (int x = 0; x < 160; x++){
-                
+    for (int screenY = 0; screenY < height; screenY++){
+        for (int screenX = 0; screenX < wide; screenX++){
+            //no palettes being used in non gbc mode
+            //this is 8 pixels, not 16 - they are combined. 
+            uint8_t bgX = (screenX + *scrollX) & 0xFF;
+            uint8_t bgY = (screenY + *scrollY) & 0xFF;
+            uint8_t tileX = bgX / 8;
+            uint8_t tileY = bgY / 8;
+            //16x16 bits for a two bit color depth - the memory unit is uint8_t so /8 hence 32 tile y.
+            //32 x 32 tile index grid (each tile index is 1 byte and there are 32 tiles in a row so)
+            uint8_t tileIndex = TileMapPtr[tileY * 32 + tileX]; 
+            //16 bytes for tile
+            uint8_t *tileDataPtr = &memorybus[0x8000 + tileIndex * 16];
 
+            uint8_t pixelX = bgX % 8;
+            uint8_t pixelY = bgY % 8;
+            uint8_t lo = OAMblock[curr];
+            uint8_t hi = OAMblock[curr+1];
+            uint8_t* OAMBlock = singleton.getOAM();
+            uint16_t OAMData = (*(OAMBlock + curr) << 8) | *(OAMBlock + 1 + curr); 
+            uint8_t y_pos = (OAMData >> 8) & 0xFF;
+            uint8_t x_pos = OAMData & 0xFF;
+            uint8_t attributes = OAMBlock[curr + 2];
+            uint8_t priority = (attributes >> 7) & 0b1;
+            uint8_t y_flip = (attributes >> 6) & 0b1;
+            uint8_t x_flip = (attributes >> 5) & 0b1;
+            uint8_t bank = (attributes >> 3) & 0b1;
+            int bit = 7 - pixelX;
+
+            //colors are 2bit values - row data is a series of
+            //this boils it down to just 2 bit
+            int color = ((hi >> bit) & 1) << 1 | ((lo >> bit) & 1);
+
+            color = translateColor(color, false);
+            if (color == -1){
+                SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+            } else {
+                SDL_SetRenderDrawColor(renderer, 0, 0, color, 255);
+            }
+            //16 bits per palette. 
+            int x_coord = x_flip ? wide - screenX : screenX;
+            int y_coord = y_flip ? height - screenY : screenY;
+            
+            SDL_RenderDrawPoint(renderer, screenX, screenY);
+        }
+    }
+    return 0;
 }
-        }}}
 
-//the bg tilemap is 256 x 256 pixels - 32 x 32 tiles
-//scroll x and y are background tile coords
-
-//we read scx and scy from io registers
-//we also check lcdc register to see which tile map to use
-//then the resultant address is where we begin processing pixels. 
-uint8_t get_tilerow_index(uint16_t address, uint8_t scrollX){
-    //tile indexes map to an addy in pure vram data. 
-    uint16_t addy = (*singleton.getSCX() + (*singleton.getSCY())) % 8;
-    return addy;
-}
 
 
 
@@ -305,16 +273,19 @@ int init_SDL(int argc, char* argv[]){
         printf("Could not initialize SDL: %s.\n", SDL_GetError());
         exit(-1);
     }
-    //4 bit pixel depth settings 
-    screen = SDL_SetVideoMode(640, 480, 4, SDL_SWSURFACE|SDL_ANYFORMAT);
-    if (screen == NULL){
-        printf(stderror, "Couldn't initialize 640x480x4 video made: %s\n", SDL_GetError());
-        exit(-1);
-    }   
-    window = SDL_CreateWindow("Session",
+    
+    window = SDL_CreateWindow("Game Boy Emulator",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, 0);
+    if (window == NULL) {
+        printf("Could not create window: %s\n", SDL_GetError());
+        exit(-1);
+    }
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    texture = SDL_CreateTexture(renderer, SL);
+    if (renderer == NULL) {
+        printf("Could not create renderer: %s\n", SDL_GetError());
+        exit(-1);
+    }
+    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 160, 144);
     return 0; 
     }
 };
