@@ -1,11 +1,11 @@
 #include "Singleton.h"
 #include "OpcodeHandler.cpp"
-constexpr double CLOCK_FREQ = 4194304.0;
-constexpr double FRAME_RATE = 59.7275;
-constexpr int CYCLES_PER_FRAME = CLOCK_FREQ / FRAME_RATE;
+const double CLOCK_FREQ = 4194304.0;
+const double FRAME_RATE = 59.7275;
+const int CYCLES_PER_FRAME = CLOCK_FREQ / FRAME_RATE;
 
 
-class CPU {
+class Clock {
 Singleton singleton = Singleton.getInstance();
 Registers myRegisters = singleton.getRegisters();
 uint16_t* pc = singleton.getProgramCounter();
