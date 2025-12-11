@@ -5,35 +5,47 @@
 #include <algorithm>
 #include <cstring>
 #include "Registers.h"
-
+#include "Clock.h"
 class Singleton {
+    Clock clock;
     Registers registers;
-    uint8_t* interruptEnable; // FFFF -> &memory_bus[0xFFFF]
     uint8_t memory_bus[0x10000];
-    // region pointers (will be set to point inside memory_bus in the ctor)
-    // these are bytes of memory, references. they cannot be iterated thru. 
-    uint8_t* romBank0 = &memory_bus[0x0000];     // 0000–3FFF -> &memory_bus[0x0000]
-    uint8_t* romBankN = &memory_bus[0x4000];      // 4000–7FFF -> &memory_bus[0x4000]
-    uint8_t* vram = &memory_bus[0x8000];          // 8000–9FFF -> &memory_bus[0x8000]
-    uint8_t* externalRAM = &memory_bus[0xA000];   // A000–BFFF -> &memory_bus[0xA000]
-    uint8_t* wramBank0 = &memory_bus[0xC000];     // C000–CFFF -> &memory_bus[0xC000]
-    uint8_t* wramBank1 = &memory_bus[0xD000];    // D000–DFFF -> &memory_bus[0xD000]
-    uint8_t* tileRAM = &memory_bus[0x9800];    // 9800–9FFF -> &memory_bus[0x9800]
-    uint8_t* echoRAM = &memory_bus[0xE000];       // E000–FDFF -> &memory_bus[0xE000]
-    uint8_t* OAM = &memory_bus[0xFE00];           // FE00–FE9F -> &memory_bus[0xFE00]
-    uint8_t* unusable = &memory_bus[0xFEA0];      // FEA0–FEFF -> &memory_bus[0xFEA0]
-    uint8_t* ioRegisters = &memory_bus[0xFF00];   // FF00–FF7F -> &memory_bus[0xFF00]
-    uint8_t* hram = &memory_bus[0xFF80];          // FF80–FFFE -> &memory_bus[0xFF80]
-    uint8_t* WY = &memory_bus[0xFF4A];          // FF4A - LCDC Y-Coordinate Window Position 
-    uint8_t* WX = &memory_bus[0xFF4B];          // FF4B - LCDC X-Coordinate Window Position
-    uint8_t* ROMPTR;
-    uint16_t programcounter;
-    uint16_t* stackPtr = reinterpret_cast<uint16_t*>(0xFFFF);
-    uint8_t* lcd_registers = &memory_bus[0xFF40]; // FF40 - FF4F (points into ioRegisters / memory_bus)
-    uint8_t* lcdc = &memory_bus[0xFF40]; // LCD Control Register
-    uint8_t* SCX = &memory_bus[0xFF42];
-    uint8_t* SCY = &memory_bus[0xFF43];
-    bool IME = 0; //interrupt master enable flag
+    uint16_t stackPtr = 0xFFFE;
+    uint16_t programcounter = 0x0000;
+    uint8_t* interruptEnable = nullptr;
+    uint8_t* interruptRequested = nullptr;
+    uint8_t* romBank0 = nullptr;
+    uint8_t* romBankN = nullptr;
+    uint8_t* vram = nullptr;
+    uint8_t* externalRAM = nullptr;
+    uint8_t* wramBank0 = nullptr;
+    uint8_t* wramBank1 = nullptr;
+    uint8_t* tileRAM = nullptr;
+    uint8_t* echoRAM = nullptr;
+    uint8_t* OAM = nullptr;
+    uint8_t* unusable = nullptr;
+    uint8_t* hram = nullptr;
+    uint8_t* WY = nullptr;
+    uint8_t* WX = nullptr;
+    uint8_t* lcd_registers = nullptr;
+    uint8_t* lcdc = nullptr;
+    uint8_t* stat = nullptr;
+    uint8_t* lyc = nullptr;
+    uint8_t* ly = nullptr;
+    uint8_t* SCX = nullptr;
+    uint8_t* SCY = nullptr;
+    uint8_t* IF = nullptr;
+    uint8_t* IE = nullptr;
+    bool* IME = 0;
+
+
+
+
+
+
+    //SHADOW VALUES FOR READ ONLY VARIABLES.
+    uint8_t* Channel1ShadowPeriod = 0;
+    bool InterruptEnableMaster = 0; //interrupt master enable flag
      
 
 
@@ -48,14 +60,15 @@ public:
 }
 
     Singleton(Singleton const&) = delete;
-    void operator=(Singleton const&) = delete;
+    void operator= (Singleton const&) = delete;
+    Clock& getClock() { return clock; }
+    Registers& getRegisters() { return registers; }
+    uint8_t* getChannel1ShadowPeriod(){ return Channel1ShadowPeriod; }
     uint8_t* getSCX() { return SCX; }
     uint8_t* getSCY() { return SCY; }
     uint8_t* getMemoryBus() { return memory_bus;}
-    uint16_t getProgramCounter() { return programcounter; }
-    uint16_t* getStackPtr() { return stackPtr; }
-    Registers& getRegisters() { return registers; }
-    uint8_t pop() { stackPtr++; return *stackPtr; }
+    uint16_t& getProgramCounter() { return programcounter; }
+    uint16_t& getStackPtr() { return stackPtr; }
     uint8_t* getROMBank0() { return romBank0; }
     uint8_t* getROMBankN() { return romBankN; }
     uint8_t* getVRAM() { return vram; }
@@ -64,28 +77,59 @@ public:
     uint8_t* getWRAMBank1() { return wramBank1; }
     uint8_t* getEchoRAM() { return echoRAM; }
     uint8_t* getOAM() { return OAM; }
-    uint8_t* getIORegisters() { return ioRegisters; }
+    bool* getIME() { return IME; }
     uint8_t* getHRAM() { return hram; }
-    uint8_t& getInterruptEnable() { return *interruptEnable; }
     uint8_t* getUnusable() { return unusable; }
-    uint8_t* getLCDC() { return &ioRegisters[0x40]; }
-    uint8_t* getSTAT() { return &ioRegisters[0x41]; }
-    uint8_t* getLYC() { return &ioRegisters[0x42]; }
-    uint8_t* getLY() { return &ioRegisters[0x44]; }
+    uint8_t* getLCDC() { return lcdc; }
+    uint8_t* getSTAT() { return stat; }
+    uint8_t* getLYC() { return lyc; }
+    uint8_t* getLY() { return ly; }
     uint8_t* getLCDRegisters() { return lcd_registers; }
-    bool getIME() const { return IME; }
     uint8_t* getIE() { return interruptEnable; }
-    uint8_t* getIF() { return &ioRegisters[0x0F]; }
+    uint8_t* getIF() { return IF; }
     uint8_t* getTileRAM() { return tileRAM; }
+    uint8_t* getInterruptRequested() { return interruptRequested; }
 
     void push(uint16_t value) {
-    stackPtr--;
-    *stackPtr = value;
+    memory_bus[stackPtr] = value >> 8 & 0xFFFF;
+    memory_bus[stackPtr + 1] = static_cast<uint8_t>(value & 0xFF);
+    stackPtr-=2;
+    }
+
+    uint16_t pop() {
+    uint16_t result = static_cast<uint16_t>(memory_bus[stackPtr]) | (static_cast<uint16_t>(memory_bus[stackPtr + 1]) << 8);
+    stackPtr += 2;
+    return result;
     }
 
     private:
         Singleton() {
             memset(memory_bus, 0, sizeof(memory_bus));
+            // set pointers after memory_bus exists
+            interruptEnable = &memory_bus[0xFFFF];
+            interruptRequested = &memory_bus[0xFF0F];
+            romBank0       = &memory_bus[0x0000];
+            romBankN       = &memory_bus[0x4000];
+            vram           = &memory_bus[0x8000];
+            externalRAM    = &memory_bus[0xA000];
+            wramBank0      = &memory_bus[0xC000];
+            wramBank1      = &memory_bus[0xD000];
+            tileRAM        = &memory_bus[0x9800];
+            echoRAM        = &memory_bus[0xE000];
+            OAM            = &memory_bus[0xFE00];
+            unusable       = &memory_bus[0xFEA0];
+            hram           = &memory_bus[0xFF80];
+            lcd_registers  = &memory_bus[0xFF40];
+            lcdc           = &memory_bus[0xFF40];
+            stat           = &memory_bus[0xFF41];
+            lyc            = &memory_bus[0xFF44];
+            ly             = &memory_bus[0xFF45];
+            SCX            = &memory_bus[0xFF42];
+            SCY            = &memory_bus[0xFF43];
+            WY             = &memory_bus[0xFF4A];
+            WX             = &memory_bus[0xFF4B];
+            IF             = &memory_bus[0xFF0F];
+            IE             = &memory_bus[0xFFFF];
         }
 };
 

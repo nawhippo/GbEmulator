@@ -27,8 +27,16 @@ public:
     // Main instruction execution function
     int executeInstruction(uint16_t instruction);
 
-    // Operand translation for r8 operands (3-bit encoding to register reference)
-    uint8_t& operandTranslation(int translate);
+    // 8-bit operand translation for r8 operands (3-bit encoding to register reference)
+    uint8_t& operandTranslation8bit(int translate);
+
+    // 16-bit operand translation for r16 operands (2-bit encoding to register pair)
+    uint16_t operandTranslation16bit(int translate);
+    void setOperandTranslation16bit(int translate, uint16_t value);
+
+    // Immediate operand extraction helpers
+    uint16_t extractImm16From24bit(uint32_t instruction24);
+    uint8_t extractImm8From16bit(uint16_t instruction16);
 
     // Instruction category handlers
     void handleArithmetic(uint16_t instruction);

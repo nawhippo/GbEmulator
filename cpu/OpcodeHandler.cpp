@@ -1,18 +1,19 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
-#include <opCodes.cpp>
-
 int pc = 0x100;
 int cycle = 0;
 
 
 class OpcodeHandler {
 Singleton globals = Singleton.getInstance();
-RegisterEnum myRegisters = globals.getRegisters();
-int& programCounter = globals.getProgramCounter();
-uint8_t ROM = globals.getROM();
-OpCodes opcodes; 
+bool& IME = globals.getIME();
+Registers myRegisters = globals.getRegisters();
+uint16_t& programCounter = globals.getProgramCounter();
+uint8_t* ROM = globals.getROM();
+uint8_t* Memory = globals.getMemoryBus();
+Clock* clock = Clock.getInstance();
+
 public: 
 enum RegisterEnum {
         A = 0, 
@@ -26,9 +27,8 @@ enum RegisterEnum {
     };
 
 
-
-// r8 operand translation
-uint8_t& operandTranslation(int translate) {
+// r8 (8-bit) operand translation
+uint8_t& operandTranslation8bit(int translate) {
     switch (translate) {
         case 0b000: // B
             return myRegisters.registersArr[RegisterEnum::B];
@@ -49,21 +49,25 @@ uint8_t& operandTranslation(int translate) {
         case 0b111: // A
             return myRegisters.registersArr[RegisterEnum::A];
         default:
-            throw std::invalid_argument("Invalid operand translation");
+            throw std::invalid_argument("Invalid 8-bit operand translation");
     }
 }
 
-
+//insturction could be 8 bit 16 bit or 24 bit
 int executeInstruction(uint16_t instruction){
     switch(instruction){
     //1 byte instructional sets
     //NOP
     case (instruction == 0x00){
         pc += 1;
+        Clock::getInstance().tick(static_cast<double>(4.0)); // was 1 -> now 4 clocks
+        break;
     }
     //HALT
     case (instruction == 0x76){
-        pc+=1;
+        pc += 1;
+        Clock::getInstance().tick(static_cast<double>(4.0));
+        break;
     }
 
  // Rotate A left (RL)
@@ -79,6 +83,7 @@ int executeInstruction(uint16_t instruction){
         flagsregister.carry = (registersArr[RegisterEnum::A] >> 7) & 1;
         
         pc += 1;
+        Clock::getInstance().tick(static_cast<double>(4.0));
         break;
     }
 
@@ -95,6 +100,7 @@ int executeInstruction(uint16_t instruction){
         flagsregister.carry = registersArr[RegisterEnum::A] & 1;
         
         pc += 1;
+        Clock::getInstance().tick(static_cast<double>(4.0));
         break;
     }
 
@@ -111,6 +117,7 @@ int executeInstruction(uint16_t instruction){
         flagsregister.carry = (registersArr[RegisterEnum::A] >> 7) & 1;
         
         pc += 1;
+        Clock::getInstance().tick(static_cast<double>(12.0)); // RLA = 3 machine cycles -> 12 clocks
         break;
     }
 
@@ -127,6 +134,7 @@ int executeInstruction(uint16_t instruction){
         flagsregister.carry = registersArr[RegisterEnum::A] & 1;
         
         pc += 1;
+        Clock::getInstance().tick(static_cast<double>(4.0));
         break;
     }
 
@@ -151,6 +159,7 @@ int executeInstruction(uint16_t instruction){
         flagsregister.half_carry = 0;
         
         pc += 1;
+        Clock::getInstance().tick(static_cast<double>(4.0));
         break;
     }
 
@@ -166,6 +175,7 @@ int executeInstruction(uint16_t instruction){
         flagsregister.carry = 0;
         
         pc += 1;
+        Clock::getInstance().tick(static_cast<double>(4.0));
         break;
     }
 
@@ -178,6 +188,7 @@ int executeInstruction(uint16_t instruction){
         flagsregister.half_carry = 0;
         
         pc += 1;
+        Clock::getInstance().tick(static_cast<double>(4.0));
         break;
     }
 
@@ -190,6 +201,7 @@ int executeInstruction(uint16_t instruction){
         flagsregister.half_carry = 0;
         
         pc += 1;
+        Clock::getInstance().tick(static_cast<double>(4.0));
         break;
     }
 }
@@ -203,6 +215,8 @@ case (instruction == 0b00000001): {
     uint16_t nextInstruction = (highByte << 8) | lowByte;
     myRegisters.load16BitRegister(RegisterEnum::B, RegisterEnum::C, nextInstruction);
     pc += 3; // 1 byte for opcode + 2 bytes for imm16
+    Clock::getInstance().tick(static_cast<double>(12.0)); // 3 machine cycles -> 12 clocks
+    break;
 }
 
 //DE
@@ -212,6 +226,8 @@ case (instruction == 0b00010001): {
     uint16_t nextInstruction = (highByte << 8) | lowByte;
     myRegisters.load16BitRegister(RegisterEnum::D, RegisterEnum::E, nextInstruction);
     pc += 3; // 1 byte for opcode + 2 bytes for imm16
+    Clock::getInstance().tick(static_cast<double>(12.0)); // 3 machine cycles -> 12 clocks
+    break;
 }
 
 //HL
@@ -221,6 +237,8 @@ case (instruction == 0b00100001): {
     uint16_t nextInstruction = (highByte << 8) | lowByte;
     myRegisters.load16BitRegister(RegisterEnum::H, RegisterEnum::L, nextInstruction);
     pc += 3; // 1 byte for opcode + 2 bytes for imm16
+    Clock::getInstance().tick(static_cast<double>(12.0)); // 3 machine cycles -> 12 clocks
+    break;
 }
 
 //SP
@@ -230,6 +248,8 @@ case (instruction == 0b00110001): {
     uint16_t nextInstruction = (highByte << 8) | lowByte;
     myRegisters.load16BitRegister(RegisterEnum::S, RegisterEnum::P, nextInstruction);
     pc += 3; // 1 byte for opcode + 2 bytes for imm16
+    Clock::getInstance().tick(static_cast<double>(12.0)); // 3 machine cycles -> 12 clocks
+    break;
 }
 
 
@@ -241,6 +261,8 @@ case (instruction == 0b00001010): {
     uint16_t addy = myRegisters.get16BitRegister(RegisterEnum::B, RegisterEnum::C);
     myRegisters.registersArr[6] = RAM[addy];
     pc += 1; // Move past the opcode
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 // DE
@@ -248,6 +270,8 @@ case (instruction == 0b00011010): {
     uint16_t addy = myRegisters.get16BitRegister(RegisterEnum::D, RegisterEnum::E);
     myRegisters.registersArr[6] = RAM[addy];
     pc += 1; // Move past the opcode
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 // HL
@@ -255,6 +279,8 @@ case (instruction == 0b00101010): {
     uint16_t addy = myRegisters.get16BitRegister(RegisterEnum::H, RegisterEnum::L);
     myRegisters.registersArr[6] = RAM[addy];
     pc += 1; // Move past the opcode
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 // AF
@@ -262,6 +288,8 @@ case (instruction == 0b00111010): {
     uint16_t addy = myRegisters.get16BitRegister(RegisterEnum::A, RegisterEnum::F); 
     myRegisters.registersArr[6] = RAM[addy];
     pc += 1; // Move past the opcode
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 
@@ -275,6 +303,8 @@ case (instruction == 0b00111010): {
     RAM[addy + 1] = (globals.stackPtr >> 8) & 0xFF;
 
     pc += 3;  
+    Clock::getInstance().tick(static_cast<double>(12.0)); // 3 machine cycles -> 12 clocks
+    break;
 }
 
 
@@ -284,42 +314,58 @@ case (instruction == 0b00111010): {
 case (instruction == 0b00000011): {
     myRegisters.modify16BitRegister(RegisterEnum::B, RegisterEnum::C, 1);
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case (instruction == 0b00010011): {
     myRegisters.modify16BitRegister(RegisterEnum::D, RegisterEnum::E, 1);
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case (instruction == 0b00100011): {
     myRegisters.modify16BitRegister(RegisterEnum::H, RegisterEnum::L, 1);
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case (instruction == 0b00110011): {
     myRegisters.modify16BitRegister(RegisterEnum::A, RegisterEnum::F, 1);
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 //dec r16 
 case(instruction == 0b0000001011): {
     myRegisters.modify16BitRegister(RegisterEnum::B, RegisterEnum::C, -1);
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case(instruction == 0b0001101011): {
     myRegisters.modify16BitRegister(RegisterEnum::D, RegisterEnum::E, -1);
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case(instruction == 0b0010101011): {
     myRegisters.modify16BitRegister(RegisterEnum::H, RegisterEnum::L, -1);
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case(instruction == 0b0011101011): {
     myRegisters.modify16BitRegister(RegisterEnum::A, RegisterEnum::F, -1);
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 //add hl, r16
@@ -327,96 +373,132 @@ case(instruction == 0b0000001001): {
     uint16_t valueToAdd = myRegisters.get16Register(RegisterEnum::B, RegisterEnum::C);
     myRegisters.modify16BitRegister(RegisterEnum::H, RegisterEnum::L, valueToAdd);
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case(instruction == 0b0001101001): {
     uint16_t valueToAdd = myRegisters.get16Register(RegisterEnum::D, RegisterEnum::E);
     myRegisters.modify16BitRegister(RegisterEnum::H, RegisterEnum::L, valueToAdd);
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case(instruction == 0b0010101001): {
     uint16_t valueToAdd = myRegisters.get16Register(RegisterEnum::H, RegisterEnum::L);
     myRegisters.modify16BitRegister(RegisterEnum::H, RegisterEnum::L, valueToAdd);
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case(instruction == 0b0011101001): {
     uint16_t valueToAdd = myRegisters.get16Register(RegisterEnum::A, RegisterEnum::F);
     myRegisters.modify16BitRegister(RegisterEnum::H, RegisterEnum::L, valueToAdd);
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
     //inc r8
 case(instruction == 0b000000100): {
     myRegisters.registersArr[RegisterEnum::B] += 1;
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case(instruction == 0b000001100): {
     myRegisters.registersArr[RegisterEnum::C] += 1;
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case(instruction == 0b000010100): {
     myRegisters.registersArr[RegisterEnum::D] += 1;
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case(instruction == 0b000011100): {
     myRegisters.registersArr[RegisterEnum::E] += 1;
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case(instruction == 0b000100100): {
     myRegisters.registersArr[RegisterEnum::H] += 1;
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case(instruction == 0b000101100): {
     myRegisters.registersArr[RegisterEnum::L] += 1;
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case(instruction == 0b000111100): {
     myRegisters.registersArr[RegisterEnum::F] += 1;
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 //dec r8
 case(instruction == 0b000000101): {
     myRegisters.registersArr[RegisterEnum::A] -= 1;
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case(instruction == 0b000001101): {
     myRegisters.registersArr[RegisterEnum::B] -= 1;
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case(instruction == 0b000010101): {
     myRegisters.registersArr[RegisterEnum::C] -= 1;
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case(instruction == 0b000011101): {
     myRegisters.registersArr[RegisterEnum::D] -= 1;
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case(instruction == 0b000100101): {
     myRegisters.registersArr[RegisterEnum::E] -= 1;
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case(instruction == 0b000101101): {
     myRegisters.registersArr[RegisterEnum::H] -= 1;
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 case(instruction == 0b000111101): {
     myRegisters.registersArr[RegisterEnum::L] -= 1;
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
+    break;
 }
 
 
@@ -424,31 +506,43 @@ case(instruction == 0b000111101): {
 case(instruction == 0b000001110): {
     myRegisters.registersArr[RegisterEnum::A] = ROM[pc + 1];
     pc += 2;
+    Clock::getInstance().tick(static_cast<double>(8.0)); // was 2 -> now 8 clocks
+    break;
 }
 
 case(instruction == 0b000010110): {
     myRegisters.registersArr[RegisterEnum::B] = ROM[pc + 1];
     pc += 2;
+    Clock::getInstance().tick(static_cast<double>(8.0)); // was 2 -> now 8 clocks
+    break;
 }
 
 case(instruction == 0b000011110): {
     myRegisters.registersArr[RegisterEnum::C] = ROM[pc + 1];
     pc += 2;
+    Clock::getInstance().tick(static_cast<double>(8.0)); // was 2 -> now 8 clocks
+    break;
 }
 
 case(instruction == 0b000100110): {
     myRegisters.registersArr[RegisterEnum::D] = ROM[pc + 1];
     pc += 2;
+    Clock::getInstance().tick(static_cast<double>(8.0)); // was 2 -> now 8 clocks
+    break;
 }
 
 case(instruction == 0b000101110): {
     myRegisters.registersArr[RegisterEnum::E] = ROM[pc + 1];
     pc += 2;
+    Clock::getInstance().tick(static_cast<double>(8.0)); // was 2 -> now 8 clocks
+    break;
 }
 
 case(instruction == 0b000111110): {
     myRegisters.registersArr[RegisterEnum::H] = ROM[pc + 1];
     pc += 2;
+    Clock::getInstance().tick(static_cast<double>(8.0)); // was 2 -> now 8 clocks
+    break;
 }
 
 
@@ -462,6 +556,7 @@ case ((instruction & 0xF8) == 0b10000000): {  // 0x80 -> 10000000
     myRegisters.flagsregister.half_carry = ((myRegisters.registersArr[RegisterEnum::A] & 0x0F) < (a & 0x0F));
     myRegisters.flagsregister.carry = (myRegisters.registersArr[RegisterEnum::A] > 0xFF);
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
 
@@ -475,6 +570,7 @@ case ((instruction & 0xF8) == 0b10000110): {  // 0x86 -> 10000110
     myRegisters.flagsregister.half_carry = ((myRegisters.registersArr[RegisterEnum::A] & 0x0F) < (a & 0x0F) + (myRegisters.flagsregister.carry ? 1 : 0));
     myRegisters.flagsregister.carry = (result > 0xFF);  // Carry flag if overflow
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
 
@@ -487,6 +583,7 @@ case ((instruction & 0xF8) == 0b10001010): {  // 0x8A -> 10001010
     myRegisters.flagsregister.half_carry = ((myRegisters.registersArr[RegisterEnum::A] & 0x0F) > (a & 0x0F));  // Check for half-carry
     myRegisters.flagsregister.carry = (myRegisters.registersArr[RegisterEnum::A] > 0xFF);  // Carry flag set if result is negative
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
 
@@ -500,6 +597,7 @@ case ((instruction & 0xF8) == 0b10001110): {  // 0x8E -> 10001110
     myRegisters.flagsregister.half_carry = ((myRegisters.registersArr[RegisterEnum::A] & 0x0F) > (a & 0x0F) + (myRegisters.flagsregister.carry ? 1 : 0));
     myRegisters.flagsregister.carry = (result > 0xFF);  // Carry flag if underflow
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
 
@@ -512,6 +610,7 @@ case ((instruction & 0xF8) == 0b10100110): {  // 0xA6 -> 10100110
     myRegisters.flagsregister.half_carry = true;  // Half-carry is always set for AND
     myRegisters.flagsregister.carry = false;  // No carry for AND
     pc += 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
 
@@ -528,6 +627,7 @@ case((instruction) == 0b11000000): {
         globals.pop();  // Pop address from stack
     }
     pc += 1;  // Move program counter to the next instruction
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
 
@@ -537,6 +637,7 @@ case((instruction) == 0b11001000): {
         globals.pop();  // Pop address from stack
     }
     pc += 1;  // Move program counter to the next instruction
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
 
@@ -546,6 +647,7 @@ case((instruction) == 0b11010000): {
         globals.pop();  // Pop address from stack
     }
     pc += 1;  // Move program counter to the next instruction
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
 
@@ -555,21 +657,26 @@ case((instruction) == 0b11011000): {
         globals.pop();  // Pop address from stack
     }
     pc += 1;  // Move program counter to the next instruction
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
 
 // RET (unconditional return)
 case((instruction) == 0b11001001): {  // 0xC9 for RET
-    globals.pop();  // Pop address from stack
-    pc += 1;  // Move program counter to the next instruction
+    uint16_t addr = globals.pop();  // Pop address from stack
+    *pc = addr; 
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
 
 // RETI (return from interrupt)
 case((instruction) == 0b11001001): {  // 0xC9 for RETI
-    globals.pop();  // Pop address from stack
+    uint16_t addr = globals.pop();  // Pop address from stack
     // Handle enabling interrupts (if applicable for your CPU)
-    pc += 1;  // Move program counter to the next instruction
+    uint16_t instruction = globals.pop();
+    *pc = instruction;
+    *IME = 1;
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
 
@@ -587,6 +694,7 @@ case((instruction) == 0b11000010): {
         opcodes.jump(nextInstruction);  // Jump to address
     }
     pc += 3;  // Move the program counter by 3 (2 bytes for the address)
+    Clock::getInstance().tick(static_cast<double>(12.0));
     break;
 }
 
@@ -597,6 +705,7 @@ case((instruction) == 0b11001010): {
         opcodes.jump(nextInstruction);  // Jump to address
     }
     pc += 3;  // Move the program counter by 3 (2 bytes for the address)
+    Clock::getInstance().tick(static_cast<double>(12.0));
     break;
 }
 
@@ -607,6 +716,7 @@ case((instruction) == 0b11010010): {
         opcodes.jump(nextInstruction);  // Jump to address
     }
     pc += 3;  // Move the program counter by 3 (2 bytes for the address)
+    Clock::getInstance().tick(static_cast<double>(12.0));
     break;
 }
 
@@ -617,6 +727,7 @@ case((instruction) == 0b11011010): {
         opcodes.jump(nextInstruction);  // Jump to address
     }
     pc += 3;  // Move the program counter by 3 (2 bytes for the address)
+    Clock::getInstance().tick(static_cast<double>(12.0));
     break;
 }
 
@@ -625,6 +736,7 @@ case((instruction) == 0b11011001): {
     globals.pop();  // Pop the return address from the stack
     myRegisters.flagsregister.masterinterruptenable = true;  // Enable interrupts
     pc += 1;  // Move to the next instruction
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
 
@@ -633,6 +745,7 @@ case((instruction) == 0b11101001): {
     uint16_t hlValue = myRegisters.get16Register(H, L);  // Get 16-bit value from HL myRegisters
     opcodes.jump(hlValue);  // Jump to the address in HL
     pc += 1;  // Move the program counter to the next instruction
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
 
@@ -647,6 +760,7 @@ case ((instruction) == 0b11000100): {
         opcodes.jump(nextInstruction);  // Jump to the target address
     }
     pc += 3;  // Move past the CALL instruction (opcode + 2 bytes for the address)
+    Clock::getInstance().tick(static_cast<double>(12.0));
     break;
 }
 
@@ -658,6 +772,7 @@ case ((instruction) == 0b11001100): {
         opcodes.jump(nextInstruction);  // Jump to the target address
     }
     pc += 3;  // Move past the CALL instruction (opcode + 2 bytes for the address)
+    Clock::getInstance().tick(static_cast<double>(12.0));
     break;
 }
 
@@ -669,6 +784,7 @@ case ((instruction) == 0b11010100): {
         opcodes.jump(nextInstruction);  // Jump to the target address
     }
     pc += 3;  // Move past the CALL instruction (opcode + 2 bytes for the address)
+    Clock::getInstance().tick(static_cast<double>(12.0));
     break;
 }
 
@@ -680,6 +796,7 @@ case ((instruction) == 0b11011100): {
         opcodes.jump(nextInstruction);  // Jump to the target address
     }
     pc += 3;  // Move past the CALL instruction (opcode + 2 bytes for the address)
+    Clock::getInstance().tick(static_cast<double>(12.0));
     break;
 }
 
@@ -695,6 +812,7 @@ case ((instruction) == 0b11001101): {
     pc = nextInstruction;
 
     // No need to increment pc, as it has been set directly to the jump address
+    Clock::getInstance().tick(static_cast<double>(12.0)); // opcode + imm16
     break;
 }
 
@@ -709,6 +827,7 @@ case ((instruction) == 0b11000001): {
     uint16_t value = stack.pop();  // Pop the 16-bit value from the stack
     myRegisters.set16Register(RegisterEnum::B, RegisterEnum::C, value);  // Set the BC myRegisters pair
     pc += 1;  // Move past the instruction byte
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
 
@@ -719,6 +838,7 @@ case ((instruction) == 0b11010001): {
     uint16_t value = stack.pop();  // Pop the 16-bit value from the stack
     myRegisters.set16Register(RegisterEnum::D, RegisterEnum::E, value);  // Set the DE myRegisters pair
     pc += 1;  // Move past the instruction byte
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 } 
 
@@ -727,15 +847,16 @@ case ((instruction) == 0b11100001): {
     uint16_t value = stack.pop();  // Pop the 16-bit value from the stack
     myRegisters.load16BitRegister(RegisterEnum::H, RegisterEnum::L, value);  // Set the HL myRegisters pair
     pc += 1;  // Move past the instruction byte
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
-
 
 // POP AF
 case ((instruction) == 0b11110001): {
     uint16_t value = stack.pop();  // Pop the 16-bit value from the stack
     myRegisters.load16BitRegister(RegisterEnum::A, RegisterEnum::F, value);  // Set the AF myRegisters pair
     pc += 1;  // Move past the instruction byte
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
 
@@ -749,6 +870,7 @@ case ((instruction) == 0b11000101): {
     uint16_t value = myRegisters.get16Register(RegisterEnum::B, RegisterEnum::C);  // Get the value from BC
     stack.push(value);  // Push the 16-bit value onto the stack
     pc += 1;  // Move past the instruction byte
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }  
 
@@ -757,6 +879,7 @@ case ((instruction) == 0b11010101): {
     uint16_t value = myRegisters.get16Register(RegisterEnum::D, RegisterEnum::E);  // Get the value from DE
     stack.push(value);  // Push the 16-bit value onto the stack
     pc += 1;  // Move past the instruction byte
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
 
@@ -766,6 +889,7 @@ case ((instruction) == 0b11110010): {
     uint16_t value = myRegisters.get16Register(RegisterEnum::H, RegisterEnum::L);  // Get the value from HL
     stack.push(value);  // Push the 16-bit value onto the stack
     pc += 1;  // Move past the instruction byte
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
 
@@ -774,6 +898,7 @@ case ((instruction) == 0b11110101): {
     uint16_t value = myRegisters.get16Register(RegisterEnum::A, RegisterEnum::F);  // Get the value from AF
     stack.push(value);  // Push the 16-bit value onto the stack
     pc += 1;  // Move past the instruction byte
+    Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
 
@@ -789,8 +914,9 @@ case ((instruction) == 0b11110101): {
         break;
     }
     
-    //2bytes instructional sets
 
 }
 return 0;
 }
+
+
