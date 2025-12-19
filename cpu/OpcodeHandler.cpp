@@ -1,15 +1,12 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
-int pc = 0x100;
-int cycle = 0;
-
 
 class OpcodeHandler {
 Singleton globals = Singleton.getInstance();
 bool& IME = globals.getIME();
 Registers myRegisters = globals.getRegisters();
-uint16_t& programCounter = globals.getProgramCounter();
+uint16_t& pc = globals.getProgramCounter();
 uint8_t* ROM = globals.getROM();
 uint8_t* Memory = globals.getMemoryBus();
 Clock* clock = Clock.getInstance();
@@ -91,6 +88,7 @@ int executeInstruction(uint16_t instruction){
     case (instruction == 0b00001111): {
         uint8_t carry = flagsregister.carry;
         // Rotate the A myRegisters right, shifting bit 0 into the carry and bit 7 into A
+        //this is 
         uint8_t result = registersArr[RegisterEnum::A] >> 1 | (carry << 7);
         
         // Update the A myRegisters with the result
@@ -624,9 +622,9 @@ case ((instruction & 0xF8) == 0b10100110): {  // 0xA6 -> 10100110
     // RET nz (return if zero flag is not set)
 case((instruction) == 0b11000000): {
     if (!(myRegisters.flagsregister.zero)) {  // Check if zero flag is not set
-        globals.pop();  // Pop address from stack
+        uint16_t addr = globals.pop();  // Pop address from stack
+        *pc = addr;
     }
-    pc += 1;  // Move program counter to the next instruction
     Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
@@ -634,9 +632,9 @@ case((instruction) == 0b11000000): {
 // RET z (return if zero flag is set)
 case((instruction) == 0b11001000): {
     if (myRegisters.flagsregister.zero) {  // Check if zero flag is set
-        globals.pop();  // Pop address from stack
+        uint16_t addr = globals.pop();  // Pop address from stack
+        *pc = addr;
     }
-    pc += 1;  // Move program counter to the next instruction
     Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
@@ -644,9 +642,9 @@ case((instruction) == 0b11001000): {
 // RET nc (return if carry flag is not set)
 case((instruction) == 0b11010000): {
     if (!(myRegisters.flagsregister.carry)) {  // Check if carry flag is not set
-        globals.pop();  // Pop address from stack
+        uint16_t addr = globals.pop();  // Pop address from stack
+        *pc = addr;
     }
-    pc += 1;  // Move program counter to the next instruction
     Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
@@ -654,9 +652,9 @@ case((instruction) == 0b11010000): {
 // RET c (return if carry flag is set)
 case((instruction) == 0b11011000): {
     if (myRegisters.flagsregister.carry) {  // Check if carry flag is set
-        globals.pop();  // Pop address from stack
+        uint16_t addr = globals.pop();
+        *pc = addr; 
     }
-    pc += 1;  // Move program counter to the next instruction
     Clock::getInstance().tick(static_cast<double>(4.0));
     break;
 }
@@ -670,11 +668,9 @@ case((instruction) == 0b11001001): {  // 0xC9 for RET
 }
 
 // RETI (return from interrupt)
-case((instruction) == 0b11001001): {  // 0xC9 for RETI
+case((instruction) == 0b11011001): {  // 0xD9 for RETI
     uint16_t addr = globals.pop();  // Pop address from stack
-    // Handle enabling interrupts (if applicable for your CPU)
-    uint16_t instruction = globals.pop();
-    *pc = instruction;
+    *pc = addr;
     *IME = 1;
     Clock::getInstance().tick(static_cast<double>(4.0));
     break;

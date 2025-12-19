@@ -80,6 +80,7 @@ if (!enabled){
 
 
 int triggerJoypadInterrupt(){
+    
 }
 }
 }

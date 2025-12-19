@@ -3,9 +3,11 @@
 #include <stdio.h>
 #include <cstdint>
 #include <algorithm>
+#include <vector>
 #include <cstring>
 #include "Registers.h"
 #include "Clock.h"
+#include "Accumulator.h"
 class Singleton {
     Clock clock;
     Registers registers;
@@ -43,8 +45,9 @@ class Singleton {
 
 
 
+
     //SHADOW VALUES FOR READ ONLY VARIABLES.
-    uint8_t* Channel1ShadowPeriod = 0;
+    uint8_t channel1ShadowFrequency; //nr13 nr14 0xFF13 0xFF14
     bool InterruptEnableMaster = 0; //interrupt master enable flag
      
 
@@ -53,17 +56,19 @@ class Singleton {
 
 
 public:
+    //cant be bothered with getters and setters for this
+    vector<Accumulator> Vectors; 
     static Singleton& getInstance(){
         static Singleton instance;
         return instance;
-
+    
 }
 
     Singleton(Singleton const&) = delete;
     void operator= (Singleton const&) = delete;
     Clock& getClock() { return clock; }
     Registers& getRegisters() { return registers; }
-    uint8_t* getChannel1ShadowPeriod(){ return Channel1ShadowPeriod; }
+    uint8_t* getChannel1ShadowFrequency(){ return Channel1ShadowFrequency; }
     uint8_t* getSCX() { return SCX; }
     uint8_t* getSCY() { return SCY; }
     uint8_t* getMemoryBus() { return memory_bus;}
