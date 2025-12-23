@@ -47,7 +47,17 @@ class Singleton {
 
 
     //SHADOW VALUES FOR READ ONLY VARIABLES.
-    uint8_t channel1ShadowFrequency; //nr13 nr14 0xFF13 0xFF14
+    uint16_t channel1ShadowFrequency; //nr13 nr14 0xFF13 0xFF14
+    uint16_t channel2ShadowFrequency; //nr18 nr19 0xFF18 0xFF19
+    uint16_t channel3ShadowFrequency; //nr18 nr19 0xFF1D 0xFF1E
+
+    //32 samples fixed 4-bit each vari speed 
+    uint8_t channel3LengthTimer;
+    bool channel1ShadowTrigger;
+    bool channel2ShadowTrigger;
+    bool channel3Trigger;
+
+    
     bool InterruptEnableMaster = 0; //interrupt master enable flag
      
 
@@ -69,6 +79,8 @@ public:
     Clock& getClock() { return clock; }
     Registers& getRegisters() { return registers; }
     uint8_t* getChannel1ShadowFrequency(){ return Channel1ShadowFrequency; }
+    uint8_t* getChannel2ShadowFrequency(){ return &channel2ShadowFrequency; }
+    uint8_t* getChannel3LengthTimer(){ return &channel3LengthTimer; }
     uint8_t* getSCX() { return SCX; }
     uint8_t* getSCY() { return SCY; }
     uint8_t* getMemoryBus() { return memory_bus;}
@@ -122,7 +134,7 @@ public:
             tileRAM        = &memory_bus[0x9800];
             echoRAM        = &memory_bus[0xE000];
             OAM            = &memory_bus[0xFE00];
-            unusable       = &memory_bus[0xFEA0];
+        unusable       = &memory_bus[0xFEA0];
             hram           = &memory_bus[0xFF80];
             lcd_registers  = &memory_bus[0xFF40];
             lcdc           = &memory_bus[0xFF40];
@@ -135,6 +147,9 @@ public:
             WX             = &memory_bus[0xFF4B];
             IF             = &memory_bus[0xFF0F];
             IE             = &memory_bus[0xFFFF];
+            channel1ShadowFrequency = (static_cast<uint16_t>(memory_bus[0xFF14] & 0x07) << 8) | memory_bus[0xFF13];
+            channel2ShadowFrequency = ((memory_bus[0xFF19] & 0b111) << 8) | memory_bus[0xFF18];
+            channel3ShadowFrequency = ((memory_bus[0xFF1E] & 0b111) << 8) | memory_bus[0xFF1D];
         }
 };
 

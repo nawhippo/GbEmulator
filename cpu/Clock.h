@@ -15,8 +15,10 @@ class Clock {
         const double MACHINE_CYCLE = 1048574.0;
         Accumulator Pulse1Accumulator* = Accumulator(0, 'a');
         Accumulator Pulse1SweepAccumulator* = Accumulator(0, 'b');
-
-
+        Accumulator Pulse1EnvelopeSweepAccumulator* = Accumulator(0, 'c');
+        Accumulator Pulse1LengthTimer = Accumulator(0, 'd');
+        Accumulator Voluntary3LengthTimer = Accumulator(0, 'e');
+        Pulse1LengthTimer.threshold = (CLOCK_FREQ/256);
         //instruction cycles take 1 - 5 machine cycles
 
         //SAME as clock

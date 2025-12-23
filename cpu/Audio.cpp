@@ -3,6 +3,7 @@
 #include "accumulator.h"
 
 class audio {
+    uint8_t* memory = Singleton.getInstance.getMemoryBus();
     static const int AUDIO_BUFFER_SIZE = 1024;
     int16_t bufferChannel1[AUDIO_BUFFER_SIZE] = {0};
     int16_t bufferChannel2[AUDIO_BUFFER_SIZE] = {0};
@@ -12,49 +13,76 @@ class audio {
     int bufferIndexChannel2 = 0;
     int bufferIndexChannel3 = 0;
     int bufferIndexChannel4 = 0;
-
     int phaseStep = 0;
+    Clock& clock = Singleton.getInstance.getClock();
+    const std::unordered_map<uint8_t, std::array<uint8_t, 8>> dutyTable = {
+        { 0b00, { 0,0,0,0,0,0,0,1 } }, // 12.5%
+        { 0b01, { 0,0,0,0,0,0,1,1 } }, // 25%
+        { 0b10, { 0,0,0,0,1,1,1,1 } }, // 50%
+        { 0b11, { 1,1,1,1,1,1,0,0 } }  // 75%
+        };
 
-
-
-
-
-
-
+    // 1. Pulse Channel 1
     struct PulseChannel1State {
-        int step;
+        int active;
+        int step = 0;
         uint8_t dutyIndex;
-        uint8_t dutyTable[8];
+        //this is the period divider
         Accumulator& phaseAccumulator = Clock.Accumulators['a'];
-        uint16_t& shadowFrequency = Singleton.getChannel1ShadowFrequency(); // changed from reference to plain uint16_t
+        uint16_t& shadowFrequency = Singleton.getChannel1ShadowFrequency();
         uint8_t sweepShift;
         uint8_t sweepDirection;
         Accumulator& sweepAccumulator = Clock.Accumulators['b'];
-        uint8_t volume;
+        Accumulator& envelopeSweepAccumulator = Clock.Accumulators['c'];
+        Acuumulator& lengthAccumulator = Clock.Accumulators['d'];
+        //initial volume
+        uint8_t volume = (memory[0xFF12] >> 4) & 0xF;
         uint8_t envelopePeriod;
         uint32_t envelopeAccumulator;
         bool channelEnabled;
-
+        uint8_t amplitude;
+        uint8_t envelope;
+        bool lengthEnable;
+        int lengthTimer = 64;
+        // Add shadow trigger for channel 1
+        uint8_t& shadowTrigger = Singleton.getInstance().getShadowTriggerChannel1();
     };
 
+    // 2. Pulse Channel 2
+    struct PulseChannel2State {
+        int step = 0;
+        uint8_t dutyIndex;
+        Acuumulator& lengthAccumulator = Clock.Accumulators['f'];
+        Accumulator& phaseAccumulator = Clock.Accumulators['g'];
+        uint16_t& shadowFrequency = Singleton.getInstance().getChannel2ShadowFrequency(); 
+        //initial volume
+        uint8_t volume = (memory[0xFF17] >> 4) & 0xF;
+        uint8_t envelopePeriod;
+        uint32_t envelopeAccumulator;
+        bool channelEnabled;
+        uint8_t amplitude;
+        uint8_t envelope;
+        Accumulator& lengthAccumulator = Clock.Accumulators['h'];
+        // Add shadow trigger for channel 2
+        uint8_t& shadowTrigger = Singleton.getInstance().getShadowTriggerChannel2();
+    };
 
-
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    // 3. Voluntary Channel 3
+    struct VoluntaryChannel3State {
+        //affected by output level 0xFF1C
+        int active;
+        //addressing ram
+        int step = 0;
+        Accumulator& phaseAccumulator = Clock.Accumulators['j']; 
+        Accumulator& lengthAccumulator = Clock.Accumulators['k'];
+        uint16_t& shadowFrequency = Singleton.getInstance().getChannel3ShadowFrequency(); 
+        int volume = (memory[0xFF1C] >> 4) & 0b11;
+        bool on = memory[0xFFA1] >> 6 & 0b1; 
+        uint8_t& lengthTimer = Singleton.getInstance().getChannel3LengthTimer();
+        uint8_t length;
+        uint8_t& shadowTrigger = Singleton.getInstance().getShadowTriggerChannel3();
+        uint8_t* amplitude;
+    };
 
 
 
@@ -73,8 +101,6 @@ class audio {
        //WRITE ONLY
        uint8_t* Channel1PeriodLow = &memory[0xFF13];
        uint8_t* Channel1PeriodHigh = &memory[0xFF14];
-
-
        uint8_t* Channel3DACEnable = &memory[0xFF1A];
        uint8_t* Channel3LengthTimer = &memory[0xFF1B];
        uint8_t* Channel3OutputLevel = &memory[0xFF1C];
@@ -91,9 +117,6 @@ class audio {
 
        
         //PUT DATA OUTPUT DATA 32 4 bit samples first 3 input, last 3 output 
-
-       uint16_t periodValue2 = getPeriodValueChannel2();
-       uint16_t periodValue3 = getPeriodValueChannel3();
        //what frequency is the output supposesd to be 
 
        //period value is decremented and when its zero move onto the next sample
@@ -131,90 +154,249 @@ class audio {
 
 
     //this needs to be called every time the sdl callback is called - so the fixed SDL sample rate. return the current phase step every time sdl pings it
-    uint16_t generatePulseWaveChannel1(){
-        uint8_t* duty = &memory[0xFF11];
-        int dutytableindex = (duty >> 5) & 0b11;
-        //this is because of the 8 steps - 1 step is a frequency timer period
-        const std::unordered_map<uint8_t, std::array<uint8_t, 8>> dutyTable = {
-        { 0b00, { 0,0,0,0,0,0,0,1 } }, // 12.5%
-        { 0b01, { 0,0,0,0,0,0,1,1 } }, // 25%
-        { 0b10, { 0,0,0,0,1,1,1,1 } }, // 50%
-        { 0b11, { 1,1,1,1,1,1,0,0 } }  // 75%
-        };
-        uint8_t* channel1Behavior = memory[0xFF10];
-        uint16_t frequency = getFrequencyChannel1();
-        // Assign to PulseChannel1State fields
-        pulseState.dutyIndex = step % 8;
-        // Copy the duty table for the current duty cycle
-        // envelopeAccumulator and channelEnabled would be updated elsewhere as needed
-        bool on = pulseState.dutyTable[pulseState.dutyIndex];
-        auto sample = on * amplitude;
-
-        if (pulseState.sweepAccumulator.trigger){
-            uint8_t sweepPeriod = (channel1Behavior >> 4) & 0b111;
-            if (sweepPeriod == 0){
-                sweepPeriod = 8;
-            }
-            uint16_t frequency = getFrequencyChannel1();
-            uint8_t direction = (channel1Behavior >> 3) & 0b1;
-            uint8_t sweepshift = (channel1Behavior) & 0b111;
-            uint16_t alter = frequency >> sweepshift;
-            uint16_t frequencyupdate;
-            if (direction){
-                frequencyupdate = frequency - alter;
+    int16_t generatePulseWaveChannel1() {
+        // Duty cycle from FF11 (bits 6-7)
+        uint8_t duty = (memory[0xFF11] >> 6) & 0b11;
+        // Length trigger and enable from FF14
+        bool lengthTrigger = (memory[0xFF14] >> 6) & 0b1;
+        bool lengthEnable = (memory[0xFF14] >> 5) & 0b1;
+    
+        // --- Begin trigger logic for channel 1 ---
+        //this activates when writing to the trigger channel
+        if (PulseChannel1State.shadowTrigger) {
+            PulseChannel1State.active = 1;
+            PulseChannel1State.lengthTimer = 1;
+            // Set enabled flag or clear it
+            if (PulseChannel1State.active == 0) {
+                PulseChannel1State.active = 1;
             } else {
-                frequencyupdate = frequency + alter;
+                PulseChannel1State.active = 0;
             }
-            // Assign all relevant values to pulseState
-            pulseState.sweepPeriod = sweepPeriod;
-            pulseState.sweepShift = sweepshift;
-            pulseState.sweepDirection = direction;
-            pulseState.frequencyUpdate = frequencyupdate;
-            pulseState.shadowFrequency = frequencyupdate;
-            pulseState.sweepAccumulator.threshold = sweepPeriod * 32768;
-            pulseState.sweepAccumulator.trigger = false; // Reset trigger after handling
-            pulseState.audioOutputFrequency = 131072 / (2048 - frequencyupdate);
+            uint16_t freq = getPeriodChannel1();
+            uint8_t sweepPeriod = (*Channel1Sweep >> 4) & 0b111;
+            uint8_t sweepShift = (*Channel1Sweep) & 0b111;
+            uint8_t sweepDirection = (*Channel1Sweep >> 3) & 0b1;
+            uint16_t sweepDelta = freq >> sweepShift;
+            uint16_t newFreq;
+            if (sweepDirection) {
+                newFreq = freq - sweepDelta;
+            } else {
+                newFreq = freq + sweepDelta;
+            }
+            // overflow check
+            if (newFreq > 2047) {
+                PulseChannel1State.active = 0;
+            } else {
+                PulseChannel1State.shadowFrequency = newFreq;
+            }
+            PulseChannel1State.phaseAccumulator.threshold = (2048 - newfreq) * 4;
+            PulseChannel1State.volume = (memory[0xFF12] >> 4) & 0xF;
+            PulseChannel1State.envelopeSweepAccumulator.reset();
+            PulseChannel1State.shadowFrequency = getPeriodChannel1();
+            PulseChannel1State.shadowTrigger = 0; // Reset shadow trigger after handling
         }
-        if (clock.phaseAccumulator.trigger){
-            phaseStep = (phaseStep + 1) % 8;
-            clock.phaseAccumulator.threshold = (2048 - frequency) * 4;
-            clock.phaseAccumulator.trigger.reset(); // Reset trigger after handling
+        if (lengthEnable) {
+            if (PulseChannel1State.lengthAccumulator.trigger && PulseChannel1State.lengthTimer > 0) {
+                PulseChannel1State.lengthTimer -= 1;
+                if (PulseChannel1State.lengthTimer == 0) {
+                    PulseChannel1State.active = 0;
+                }
+            }
         }
-        //sound should change evey ~ 7.8ms
-        //values are copied from shadow memory (considering we cannot create hardware that does pulses and the registers are read only)
-        //ff10 -> phase sweep pace 654 (timer for phases)
-        //direction - 0 is add 1 is sub
-        //sweep step - shift right before adding/subtracting delta
-        bool on = pulseState.dutyTable[pulseState.dutyIndex];
-        auto sample = on * amplitude;
+        // Envelope logic
+        uint8_t envelope = memory[0xFF12];
+        uint8_t initialVolume = (envelope >> 4) & 0xF;
+        bool envelopeDirection = (envelope >> 3) & 0x1;
+        uint8_t envelopePeriod = envelope & 0x7;
+        if (PulseChannel1State.step == 0) {
+            PulseChannel1State.volume = initialVolume;
+        }
+
+        if (PulseChannel1State.sweepAccumulator.trigger) {
+            uint8_t sweepPeriod = (*Channel1Sweep >> 4) & 0b111;
+            uint8_t sweepShift = (*Channel1Sweep) & 0b111;
+            uint8_t sweepDirection = (*Channel1Sweep >> 3) & 0b1;
+            uint16_t freq = PulseChannel1State.shadowFrequency;
+            uint16_t sweepDelta = freq >> sweepShift;
+            uint16_t newFreq;
+            if (sweepDirection) {
+                newFreq = freq - sweepDelta;
+            } else {
+                newFreq = freq + sweepDelta;
+            }
+            // overflow check
+            if (newFreq > 2047) {
+                PulseChannel1State.active = 0;
+            } else {
+                PulseChannel1State.shadowFrequency = newFreq;
+            }
+            // Set threshold for next sweep step
+            PulseChannel1State.sweepAccumulator.threshold = sweepPeriod * 65536;
+            PulseChannel1State.sweepAccumulator.trigger = false;
+        }
+
+        // Envelope sweep accumulator logic
+        if (PulseChannel1State.envelopeSweepAccumulator.trigger) {
+            if (envelopePeriod > 0) {
+                if (envelopeDirection) {
+                    if (PulseChannel1State.volume < 15) {
+                        PulseChannel1State.volume += 1;
+                    }
+                } else {
+                    if (PulseChannel1State.volume > 0) {
+                        PulseChannel1State.volume -= 1;
+                        if (PulseChannel1State.volume == 0) {
+                            PulseChannel1State.active = 0;
+                        }
+                    }
+                }
+            }
+            PulseChannel1State.amplitude = (int16_t)(PulseChannel1State.volume * 32767);
+            PulseChannel1State.envelopeSweepAccumulator.threshold = envelopePeriod * 65536;
+            PulseChannel1State.envelopeSweepAccumulator.trigger = false;
+        } else {
+            PulseChannel1State.amplitude = (int16_t)(PulseChannel1State.volume * 32767);
+        }
+
+        uint16_t frequency = getPeriodChannel1();
+        if (PulseChannel1State.phaseAccumulator.trigger) {
+            PulseChannel1State.dutyIndex = PulseChannel1State.step % 8;
+            PulseChannel1State.step = (PulseChannel1State.step + 1) % 8;
+            Pulse1Channel1State.phaseAccumulator.reset();
+            //11 bit max number is 2048 - we count up to 2048 and multiply by four since the audio is a forth the speed of the cpu (we are basesd off cpu instructions)
+            Pulse1Channel1State.phaseAccumulator.threshold = (2048 - *channel1ShadowFrequency) * 4;
+        }
+        // Only update sample if active
+        bool on = dutyTable.at(duty)[PulseChannel1State.dutyIndex];
+        int16_t sample = (PulseChannel1State.active && on) ? PulseChannel1State.amplitude : 0;
         return sample;
     }
 
-    //keep in mind this IS signhed
-    uint8_t audioCallbackChannel1(void* userdata, uint8_t* audioStream, int len) {
-        int16_t* out = (int16_t*)stream;
-        int num_samples = len / sizeof(int16_t);
-        for (int i = 0; i < num_samples; ++i) {
-            out[i] = generatePulseWaveChannel1();
+    //the frequency is the difference between calls happening very fast.
+    uint16_t generatePulseWaveChannel2() {
+        // Duty cycle from FF16 (bits 6-7)
+        uint8_t duty = memory[0xFF16];
+        int dutytableindex = (duty >> 6) & 0b11;
+        // Envelope from FF17
+        uint8_t envelope = memory[0xFF17];
+        // Frequency: upper 3 bits of FF19, all of FF18
+        uint16_t frequency = getPeriodChannel2();
+
+        // --- Begin trigger logic for channel 2 ---
+        if (PulseChannel2State.shadowTrigger) {
+            PulseChannel2State.active = 1;
+            PulseChannel2State.lengthTimer = 1;
+            // Set enabled flag or clear it
+            if (PulseChannel2State.active == 0) {
+                PulseChannel2State.active = 1;
+            } else {
+                PulseChannel2State.active = 0;
+            }
+            PulseChannel2State.volume = (memory[0xFF17] >> 4) & 0xF;
+            PulseChannel2State.envelopeSweepAccumulator.reset();
+            PulseChannel2State.shadowFrequency = frequency;
+            PulseChannel2State.shadowTrigger = 0; 
         }
-}   
+        uint8_t lengthEnable = (memory[0xFF19] >> 6) & 0b1;
+        // --- Length logic for channel 2 (like channel 1) ---
+        if (lengthEnable) {
+            if (PulseChannel2State.lengthAccumulator.trigger && PulseChannel2State.lengthTimer > 0) {
+                PulseChannel2State.lengthTimer -= 1;
+                if (PulseChannel2State.lengthTimer == 0) {
+                    PulseChannel2State.active = 0;
+                }
+            }
+        }
+        // Envelope logic (with sweep timing, similar to channel 1)
+        uint8_t initialVolume = (envelope >> 4) & 0xF;
+        bool envelopeDirection = (envelope >> 3) & 0x1;
+        uint8_t envelopePeriod = envelope & 0x7;
+        if (PulseChannel2State.step == 0) {
+            PulseChannel2State.volume = initialVolume;
+        }
 
+        // Envelope sweep accumulator logic
+        if (PulseChannel2State.envelopeSweepAccumulator.trigger) {
+            if (envelopePeriod > 0) {
+                if (envelopeDirection) {
+                    if (PulseChannel2State.volume < 15) {
+                        PulseChannel2State.volume += 1;
+                    }
+                } else {
+                    if (PulseChannel2State.volume > 0) {
+                        PulseChannel2State.volume -= 1;
+                        if (PulseChannel2State.volume == 0) {
+                            PulseChannel2State.active = 0;
+                        }
+                    }
+                }
+            }
+            PulseChannel2State.amplitude = (int16_t)(PulseChannel2State.volume * 32767);
+            // Set threshold for next envelope step (same as channel 1, but for channel 2)
+            PulseChannel2State.envelopeSweepAccumulator.threshold = envelopePeriod * 65536;
+            PulseChannel2State.envelopeSweepAccumulator.reset();
+        } else {
+            PulseChannel2State.amplitude = (int16_t)(PulseChannel2State.volume * 32767);
+        }
 
-
-    //channel2
-    uint16_t getFrequencyValueChannel2(){
-        //upper 3 bits of high, and all of low - eleven bit value
-        uint16_t periodValue = (((memory[0xFF19] & 0b00000111) << 8) | (memory[0xFF18] & 0xFF)) | 0b0000011111111111;
-        return periodValue;
+        // --- Tie waveform step to phase accumulator trigger ---
+        if (PulseChannel2State.phaseAccumulator.trigger) {
+            PulseChannel2State.dutyIndex = PulseChannel2State.step % 8;
+            PulseChannel2State.step = (PulseChannel2State.step + 1) % 8;
+            PulseChannel2State.reset();
+        }
+        bool on = dutyTable.at(dutytableindex)[PulseChannel2State.dutyIndex];
+        auto sample = (PulseChannel2State.active && on) ? PulseChannel2State.amplitude : 0;
+        return sample;
     }
 
-    //channel 3
-    uint16_t getFrequencyValueChannel3(){
-        uint16_t periodValue = ((((memory[0xFF1E] << 5) & 0b11100000) & (memory[0xFF1D] & 0xFF)) & 0b0000011111111111);
-        return periodValue;
+
+    uint16_t generateVoluntaryWaveChannel3(){
+        std::unordered_map<int, int> audioConversion = {
+            {0b00, 0}
+            {0b01, 15 * 32767}
+            {0b10, 7 * 32767}
+            {0b11, 3 * 32767}
+        };
+        VoluntaryChannel3State.volume = memory[0xFF1C] >> 4;
+        VoluntaryChannel3State.amplitude = (int16_t) audioConversion[VoluntaryChannel3State.Volume] * 32767; 
+        //length timer, time until the channel shuts itself off.
+        VoluntaryChannel3State.length = memory[0xFF1E] >> 5;
+        //its write only so reading it is pointless
+        VoluntaryChannel3State.trigger = memory[0xFF1E] >> 6;
+        VoluntaryChannel3State.volume = memory[0xFF1C] >> 4;
+        bool lengthEnable = ((memory[0xFF1E] >> 6) & 0b1);
+        // --- Length logic for channel 3 (like channel 1) ---
+        if (lengthEnable) {
+            if (VoluntaryChannel3State.lengthAccumulator.trigger && VoluntaryChannel3State.lengthTimer > 0) {
+                VoluntaryChannel3State.lengthTimer -= 1;
+                if (VoluntaryChannel3State.lengthTimer == 0) {
+                    VoluntaryChannel3State.on = false;
+                }
+            }
+        }
+        if (VoluntaryChannel3State.shadowTrigger){
+           VoluntaryChannel3State.active = 0;
+           VoluntaryChannel3State.LengthAccumulator.reset();
+           VoluntaryChannel3State.Volume = audioConversion[((memory[0xFF1C] >> 4) & 0b11)];
+           //TODO: reset RAM
+            VoluntaryChannel3State.step = 0;
+        } 
+        //length enable handled during instructions.
+        VoluntaryChannel3State.audioOutputFrequency = 2097152 / (2048 - period);
+        //read one sample
+        if (VoluntaryChannel3State.phase_accumlator.trigger){
+            VoluntaryChannel3State.phase_accumlator.reset()
+            //only 32 bit samples long.
+            VoluntaryChannel3State.step = VoluntaryChannel3State.step % 32;   
+        }
+        uint8_t sampleByte = memory[0xFF30 + (VoluntaryChannel3State.step / 2)];
+        //reverse nibble order.
+        uint8_t sample4bit = (VoluntaryChannel3State.step % 2 == 0) ?
+        (sampleByte >> 4) : (sampleByte & 0x0F);
+        uint16_t sample16bit = sample4bit * 4369; 
+        return sample16bit;
     }
-
-
 
 
     uint16_t handleAudioMixing(){
@@ -298,7 +480,7 @@ class audio {
         want.channels = 1;                    // mono
         want.samples = 1024;                  // buffer size in frames
         want.callback = audio_callback;       // your function
-        want.userdata = &PulseChanne13State;       // pass a pointer to your state
+        want.userdata = &VoluntaryChanne13State;       // pass a pointer to your state
         SDL_AudioDeviceID devchannel3dev = SDL_OpenAudioDevice(
             nullptr,       // default device
             0,             // 0 = playback
@@ -358,12 +540,5 @@ class audio {
             return;
         }
     }
-    //64hz envelope sweep rate of 8
-    //256hz sound length rate of 2 
-    //128 hz - ch1 freq rate of 4 
-    int APUStep(){
-        //audio sync? universal step timer
-        clock.Accumulators['a'].tick(1); // or whatever increment is appropriate
-        clock.Accumulators['b'].tick(1);
-    }
 }
+
