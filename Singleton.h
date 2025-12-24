@@ -40,11 +40,11 @@ class Singleton {
     uint8_t* IE = nullptr;
     bool* IME = 0;
 
-
-
-
-
-
+    // Audio channel length timer references
+    uint8_t* channel1LengthTimer = nullptr;
+    uint8_t* channel2LengthTimer = nullptr;
+    uint8_t* channel3LengthTimer = nullptr;
+    uint8_t* channel4LengthTimer = nullptr;
 
     //SHADOW VALUES FOR READ ONLY VARIABLES.
     uint16_t channel1ShadowFrequency; //nr13 nr14 0xFF13 0xFF14
@@ -53,9 +53,11 @@ class Singleton {
 
     //32 samples fixed 4-bit each vari speed 
     uint8_t channel3LengthTimer;
+    uint8_t channel4LengthTimer;
     bool channel1ShadowTrigger;
     bool channel2ShadowTrigger;
     bool channel3Trigger;
+    bool channel4ShadowTrigger;
 
     
     bool InterruptEnableMaster = 0; //interrupt master enable flag
@@ -81,6 +83,14 @@ public:
     uint8_t* getChannel1ShadowFrequency(){ return Channel1ShadowFrequency; }
     uint8_t* getChannel2ShadowFrequency(){ return &channel2ShadowFrequency; }
     uint8_t* getChannel3LengthTimer(){ return &channel3LengthTimer; }
+    uint8_t* getChannel1LengthTimer() { return channel1LengthTimer; }
+    uint8_t* getChannel2LengthTimer() { return channel2LengthTimer; }
+    uint8_t* getChannel3LengthTimer() { return channel3LengthTimer; }
+    uint8_t* getChannel4LengthTimer() { return channel4LengthTimer; }
+    bool getChannel1ShadowTrigger() { return channel1ShadowTrigger; }
+    bool getChannel2ShadowTrigger() { return channel2ShadowTrigger; }
+    bool getChannel3ShadowTrigger() { return channel3Trigger; }
+    bool getChannel4ShadowTrigger() { return channel4ShadowTrigger; }
     uint8_t* getSCX() { return SCX; }
     uint8_t* getSCY() { return SCY; }
     uint8_t* getMemoryBus() { return memory_bus;}
@@ -147,6 +157,13 @@ public:
             WX             = &memory_bus[0xFF4B];
             IF             = &memory_bus[0xFF0F];
             IE             = &memory_bus[0xFFFF];
+            
+            // Initialize audio channel length timer references
+            channel1LengthTimer = &memory_bus[0xFF11]; // NR11 - Channel 1 Sound length/Wave pattern duty
+            channel2LengthTimer = &memory_bus[0xFF16]; // NR21 - Channel 2 Sound length/Wave pattern duty  
+            channel3LengthTimer = &memory_bus[0xFF1B]; // NR31 - Channel 3 Sound length
+            channel4LengthTimer = &memory_bus[0xFF20]; // NR41 - Channel 4 Sound length
+            
             channel1ShadowFrequency = (static_cast<uint16_t>(memory_bus[0xFF14] & 0x07) << 8) | memory_bus[0xFF13];
             channel2ShadowFrequency = ((memory_bus[0xFF19] & 0b111) << 8) | memory_bus[0xFF18];
             channel3ShadowFrequency = ((memory_bus[0xFF1E] & 0b111) << 8) | memory_bus[0xFF1D];

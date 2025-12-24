@@ -24,68 +24,127 @@ class audio {
 
     // 1. Pulse Channel 1
     struct PulseChannel1State {
+        // Status fields
         int active;
+        bool channelEnabled;
+        
+        // Timing fields
         int step = 0;
         uint8_t dutyIndex;
-        //this is the period divider
+        int lengthTimer = 64;
+        bool lengthEnable;
+        
+        // Accumulator references
         Accumulator& phaseAccumulator = Clock.Accumulators['a'];
+        Accumulator& sweepAccumulator = Clock.Accumulators['b'];
+        Accumulator& envelopeSweepAccumulator = Clock.Accumulators['c'];
+        Accumulator& lengthAccumulator = Clock.Accumulators['d'];
+        
+        // Frequency fields
         uint16_t& shadowFrequency = Singleton.getChannel1ShadowFrequency();
         uint8_t sweepShift;
         uint8_t sweepDirection;
-        Accumulator& sweepAccumulator = Clock.Accumulators['b'];
-        Accumulator& envelopeSweepAccumulator = Clock.Accumulators['c'];
-        Acuumulator& lengthAccumulator = Clock.Accumulators['d'];
-        //initial volume
+        
+        // Volume/Envelope fields
         uint8_t volume = (memory[0xFF12] >> 4) & 0xF;
-        uint8_t envelopePeriod;
-        uint32_t envelopeAccumulator;
-        bool channelEnabled;
         uint8_t amplitude;
         uint8_t envelope;
-        bool lengthEnable;
-        int lengthTimer = 64;
-        // Add shadow trigger for channel 1
+        uint8_t envelopePeriod;
+        uint32_t envelopeAccumulator;
+        
+        // Trigger fields
         uint8_t& shadowTrigger = Singleton.getInstance().getShadowTriggerChannel1();
     };
 
     // 2. Pulse Channel 2
     struct PulseChannel2State {
+        // Status fields
+        bool channelEnabled;
+        
+        // Timing fields
         int step = 0;
         uint8_t dutyIndex;
-        Acuumulator& lengthAccumulator = Clock.Accumulators['f'];
+        uint8_t lengthTimer = Singleton.getInstance().getChannel2LengthTimer();
+        
+        // Accumulator references
         Accumulator& phaseAccumulator = Clock.Accumulators['g'];
-        uint16_t& shadowFrequency = Singleton.getInstance().getChannel2ShadowFrequency(); 
-        //initial volume
+        Accumulator& lengthAccumulator = Clock.Accumulators['f'];
+        Accumulator& lengthAccumulator = Clock.Accumulators['h'];
+        
+        // Frequency fields
+        uint16_t& shadowFrequency = Singleton.getInstance().getChannel2ShadowFrequency();
+        
+        // Volume/Envelope fields
         uint8_t volume = (memory[0xFF17] >> 4) & 0xF;
-        uint8_t envelopePeriod;
-        uint32_t envelopeAccumulator;
-        bool channelEnabled;
         uint8_t amplitude;
         uint8_t envelope;
-        Accumulator& lengthAccumulator = Clock.Accumulators['h'];
-        // Add shadow trigger for channel 2
+        uint8_t envelopePeriod;
+        uint32_t envelopeAccumulator;
+        
+        // Trigger fields
         uint8_t& shadowTrigger = Singleton.getInstance().getShadowTriggerChannel2();
     };
 
     // 3. Voluntary Channel 3
     struct VoluntaryChannel3State {
-        //affected by output level 0xFF1C
+        // Status fields
         int active;
-        //addressing ram
+        bool on = memory[0xFFA1] >> 6 & 0b1;
+        
+        // Timing fields
         int step = 0;
-        Accumulator& phaseAccumulator = Clock.Accumulators['j']; 
-        Accumulator& lengthAccumulator = Clock.Accumulators['k'];
-        uint16_t& shadowFrequency = Singleton.getInstance().getChannel3ShadowFrequency(); 
-        int volume = (memory[0xFF1C] >> 4) & 0b11;
-        bool on = memory[0xFFA1] >> 6 & 0b1; 
         uint8_t& lengthTimer = Singleton.getInstance().getChannel3LengthTimer();
         uint8_t length;
-        uint8_t& shadowTrigger = Singleton.getInstance().getShadowTriggerChannel3();
+        
+        // Accumulator references
+        Accumulator& phaseAccumulator = Clock.Accumulators['j'];
+        Accumulator& lengthAccumulator = Clock.Accumulators['k'];
+        
+        // Frequency fields
+        uint16_t& shadowFrequency = Singleton.getInstance().getChannel3ShadowFrequency();
+        
+        // Volume/Envelope fields
+        int volume = (memory[0xFF1C] >> 4) & 0b11;
         uint8_t* amplitude;
+        
+        // Trigger fields
+        uint8_t& shadowTrigger = Singleton.getInstance().getShadowTriggerChannel3();
     };
 
-
-
+    struct NoiseChannel4State {
+        // Status fields
+        int active;
+        bool lengthEnable = memory[0xFF23] >> 7 & 0b1;
+        bool lengthEnable;
+        
+        // Timing fields
+        int step = 0;
+        uint8_t& lengthTimer = Singleton.getInstance().getChannel4LengthTimer();
+        
+        // Accumulator references
+        Accumulator& randomAccumulator = Clock.Accumulators['l'];
+        Accumulator& lengthAccumulator = Clock.Accumulators['m'];
+        Accumulator& envelopeAccumulator = Clock.Accumulators['n'];
+        
+        // Frequency fields
+        uint16_t& shadowFrequency = Singleton.getInstance().getChannel4ShadowFrequency();
+        double clockDivider = memory[0xFF22] & 0b111;
+        uint8_t clockShift = (memory[0xFF22] >> 4) & 0b1111;
+        uint8_t lsfrWidth = (memory[0xFF22] >> 3) & 0b1;
+        
+        // Volume/Envelope fields - none for noise channel
+        
+        // Trigger fields
+        uint8_t trigger = Singleton.getInstance().getChannel4ShadowTrigger();
+        uint8_t volume; 
+        int16_t amplitude;        
+        // Constructor logic
+        if (clockDivider == 0){
+            clockDivider = 0.5;
+        }
+        else {};
+    };
+    
 
 
        const int SDL_SAMPLE_RATE = 44100;
@@ -114,44 +173,6 @@ class audio {
        //16 bytes - each byte holds 2 samples - upper nibble first FF30 Upper -> FF30 Lower -> FF31 Upper
 
        uint8_t* WavePatternRAM = &memory[0xFF30];
-
-       
-        //PUT DATA OUTPUT DATA 32 4 bit samples first 3 input, last 3 output 
-       //what frequency is the output supposesd to be 
-
-       //period value is decremented and when its zero move onto the next sample
-       //period value is just an interval tracker 
-       //pulse channel 3 freq 
-
-
-       uint16_t sampleRate2 = (1048576/(2048 - periodValue2));
-       uint16_t sampleRate3 = (1048576/(2048 - periodValue3));
-
-       
-    //    uint16_t freq1 = (131072/(2048 - periodValue1));
-       uint16_t freq2 = (131072/(2048 - periodValue2));
-       uint16_t freq3 = (131072/(2048 - periodValue2));
-
-       //audio is clamped to maximum 32 unsigned 4,294,967,295
-       //sample rates in the system vary, so we have to have constant sdl sample rates.
-       //this is for converting audio formats automatically - rather than directly writing to a buffer - not without latency unfortunately.
-        SDL_AudioStream *channel1Stream = SDL_NewAudioStream(AUDIO_u32, 1, SDL_SAMPLE_RATE, AUDIO_u32, 2, SDL_SAMPLE_RATE);
-    //    SDL_AudioStream *channel2Stream = SDL_NewAudioStream(AUDIO_u32, 1, SDL_SAMPLE_RATE, AUDIO_u32, 2, SDL_SAMPLE_RATE);
-    //    SDL_AudioStream *channel3Stream = SDL_NewAudioStream(AUDIO_u32, 1, SDL_SAMPLE_RATE, AUDIO_u32, 2, SDL_SAMPLE_RATE);
-    //    SDL_AudioStream *channel4Stream = SDL_NewAudioStream(AUDIO_u32, 1, SDL_SAMPLE_RATE, AUDIO_u32, 2, SDL_SAMPLE_RATE);
-       //how to write to buffer;
-
-       uint16_t buffer;
-       //whats the sample rate
-       uint8_t *output;
-       static int out_bytes;       
-       //evidentally these streams should all be put into one pcm buffer - but to do that we have to handle timing stuff....
-       //mixing samples means adding them together.
-
-       //SDL_PutAudioStreamData - this is where we pull data from the our analog sources
-       //sdl_getaudiostreamdata - this is where we get the formatted data to combine in our mixed audio
-    
-
 
     //this needs to be called every time the sdl callback is called - so the fixed SDL sample rate. return the current phase step every time sdl pings it
     int16_t generatePulseWaveChannel1() {
@@ -374,6 +395,7 @@ class audio {
                     VoluntaryChannel3State.on = false;
                 }
             }
+            
         }
         if (VoluntaryChannel3State.shadowTrigger){
            VoluntaryChannel3State.active = 0;
@@ -398,6 +420,82 @@ class audio {
         return sample16bit;
     }
 
+    uint16_t generateNoiseWaveChannel4(){
+        // --- Begin trigger logic for channel 4 ---
+        if (NoiseChannel4State.trigger) {
+            NoiseChannel4State.active = 1;
+            NoiseChannel4State.lengthTimer = memory[0xFF20] & 0b111111; // 6-bit length timer
+            NoiseChannel4State.volume = (memory[0xFF21] >> 4) & 0xF;
+            NoiseChannel4State.envelopeAccumulator.reset();
+            NoiseChannel4State.randomAccumulator.reset();
+            
+            // Calculate frequency for phase accumulator
+            auto divider = memory[0xFF22] & 0b111;
+            if (divider == 0) divider = 0.5;
+            auto shift = (memory[0xFF22] >> 4) & 0b1111;
+            auto freq = 262144 / (divider << (2 * shift));
+            auto freqScaledtoCpu = (4194304.0 / freq);
+            NoiseChannel4State.randomAccumulator.threshold = freqScaledtoCpu;
+            NoiseChannel4State.trigger = 0; // Reset trigger after handling
+            NoiseChannel4State.step = (NoiseChannel4State.step + 1) % 32768;
+        }
+        
+        //when written to this happens immediately. TODO: need a way to refer to the struct globally so i can change the length enable state. 
+        if (NoiseChannel4State.lengthEnable) {
+            if (NoiseChannel4State.lengthAccumulator.trigger && NoiseChannel4State.lengthTimer > 0) {
+                NoiseChannel4State.lengthTimer -= 1;
+                if (NoiseChannel4State.lengthTimer == 0) {
+                    NoiseChannel4State.active = 0;
+                }
+                NoiseChannel4State.lengthAccumulator.reset();
+            }
+        }
+        
+        // Envelope logic (similar to channels 1 and 2)
+        uint8_t envelope = memory[0xFF21];
+        uint8_t initialVolume = (envelope >> 4) & 0xF;
+        bool envelopeDirection = (envelope >> 3) & 0x1;
+        uint8_t envelopePeriod = envelope & 0x7;
+        
+        if (NoiseChannel4State.envelopeAccumulator.trigger) {
+            if (envelopePeriod > 0) {
+                if (envelopeDirection) {
+                    if (NoiseChannel4State.volume < 15) {
+                        NoiseChannel4State.volume += 1;
+                    }
+                } else {
+                    if (NoiseChannel4State.volume > 0) {
+                        NoiseChannel4State.volume -= 1;
+                        if (NoiseChannel4State.volume == 0) {
+                            NoiseChannel4State.active = 0;
+                        }
+                    }
+                }
+            }
+            NoiseChannel4State.amplitude = (int16_t)(NoiseChannel4State.volume * 2184); // Scale for noise
+            NoiseChannel4State.envelopeAccumulator.threshold = envelopePeriod * 65536;
+            NoiseChannel4State.envelopeAccumulator.reset();
+        } else {
+            NoiseChannel4State.amplitude = (int16_t)(NoiseChannel4State.volume * 2184);
+        }
+
+        // Phase accumulator logic (similar to other channels)
+        if (NoiseChannel4State.randomAccumulator.trigger){
+            auto divider = memory[0xFF22] & 0b111;
+            auto shift = (memory[0xFF22] >> 4) & 0b1111;
+            auto freq = 262144 / (divider << shift); 
+            auto freqScaledtoCpu = (4194304.0 / freq);
+            NoiseChannel4State.randomAccumulator.reset();
+            NoiseChannel4State.randomAccumulator.threshold = freqScaledtoCpu;
+            
+            // Generate noise step (placeholder for LFSR logic)
+            NoiseChannel4State.step = (NoiseChannel4State.step + 1) % 32768; // 15-bit LFSR
+        }
+        
+        // Return sample based on active state and current noise value
+        int16_t sample = NoiseChannel4State.active ? NoiseChannel4State.amplitude : 0;
+        return sample;
+    }
 
     uint16_t handleAudioMixing(){
         uint8_t bufferlen = 4096;
