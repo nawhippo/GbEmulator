@@ -2,30 +2,12 @@
 #include <SDL2.h>
 #include "accumulator.h"
 
-class audio {
-    uint8_t* memory = Singleton.getInstance.getMemoryBus();
-    static const int AUDIO_BUFFER_SIZE = 1024;
-    int16_t bufferChannel1[AUDIO_BUFFER_SIZE] = {0};
-    int16_t bufferChannel2[AUDIO_BUFFER_SIZE] = {0};
-    int16_t bufferChannel3[AUDIO_BUFFER_SIZE] = {0};
-    int16_t bufferChannel4[AUDIO_BUFFER_SIZE] = {0};
-    int bufferIndexChannel1 = 0;
-    int bufferIndexChannel2 = 0;
-    int bufferIndexChannel3 = 0;
-    int bufferIndexChannel4 = 0;
-    int phaseStep = 0;
-    Clock& clock = Singleton.getInstance.getClock();
-    const std::unordered_map<uint8_t, std::array<uint8_t, 8>> dutyTable = {
-        { 0b00, { 0,0,0,0,0,0,0,1 } }, // 12.5%
-        { 0b01, { 0,0,0,0,0,0,1,1 } }, // 25%
-        { 0b10, { 0,0,0,0,1,1,1,1 } }, // 50%
-        { 0b11, { 1,1,1,1,1,1,0,0 } }  // 75%
-        };
 
-    // 1. Pulse Channel 1
+class audio {
+
+          // 1. Pulse Channel 1
     struct PulseChannel1State {
         // Status fields
-        int active;
         bool channelEnabled;
         
         // Timing fields
@@ -88,8 +70,7 @@ class audio {
     // 3. Voluntary Channel 3
     struct VoluntaryChannel3State {
         // Status fields
-        int active;
-        bool on = memory[0xFFA1] >> 6 & 0b1;
+        bool active = memory[0xFFA1] >> 6 & 0b1;
         
         // Timing fields
         int step = 0;
@@ -116,7 +97,8 @@ class audio {
         int active;
         bool lengthEnable = memory[0xFF23] >> 7 & 0b1;
         bool lengthEnable;
-        
+        //cache prev
+        uint16_t lsfr;
         // Timing fields
         int step = 0;
         uint8_t& lengthTimer = Singleton.getInstance().getChannel4LengthTimer();
@@ -131,20 +113,40 @@ class audio {
         double clockDivider = memory[0xFF22] & 0b111;
         uint8_t clockShift = (memory[0xFF22] >> 4) & 0b1111;
         uint8_t lsfrWidth = (memory[0xFF22] >> 3) & 0b1;
-        
-        // Volume/Envelope fields - none for noise channel
-        
-        // Trigger fields
         uint8_t trigger = Singleton.getInstance().getChannel4ShadowTrigger();
         uint8_t volume; 
         int16_t amplitude;        
-        // Constructor logic
         if (clockDivider == 0){
             clockDivider = 0.5;
         }
-        else {};
     };
+
+    uint8_t* memory = Singleton.getInstance.getMemoryBus();
+    static const int AUDIO_BUFFER_SIZE = 1024;
+    int16_t bufferChannel1[AUDIO_BUFFER_SIZE] = {0};
+    int16_t bufferChannel2[AUDIO_BUFFER_SIZE] = {0};
+    int16_t bufferChannel3[AUDIO_BUFFER_SIZE] = {0};
+    int16_t bufferChannel4[AUDIO_BUFFER_SIZE] = {0};
+    extern PulseChanne1lState;
+    extern PulseChannel2State;
+    extern VoluntaryChannel3State;
+    extern NoiseChannel4State; 
+    int bufferIndexChannel1 = 0;
+    int bufferIndexChannel2 = 0;
+    int bufferIndexChannel3 = 0;
+    int bufferIndexChannel4 = 0;
+    int phaseStep = 0;
+    Clock& clock = Singleton.getInstance.getClock();
+    const std::unordered_map<uint8_t, std::array<uint8_t, 8>> dutyTable = {
+        { 0b00, { 0,0,0,0,0,0,0,1 } }, // 12.5%
+        { 0b01, { 0,0,0,0,0,0,1,1 } }, // 25%
+        { 0b10, { 0,0,0,0,1,1,1,1 } }, // 50%
+        { 0b11, { 1,1,1,1,1,1,0,0 } }  // 75%
+        };
+
+   
     
+   
 
 
        const int SDL_SAMPLE_RATE = 44100;
@@ -210,7 +212,8 @@ class audio {
             } else {
                 PulseChannel1State.shadowFrequency = newFreq;
             }
-            PulseChannel1State.phaseAccumulator.threshold = (2048 - newfreq) * 4;
+            //THE TOTAL CPU CLOCK IS DIVIDED BY THE TIMER RATE 
+            PulseChannel1State.phaseAccumulator.threshold = (2048 - newfreq) * 32;
             PulseChannel1State.volume = (memory[0xFF12] >> 4) & 0xF;
             PulseChannel1State.envelopeSweepAccumulator.reset();
             PulseChannel1State.shadowFrequency = getPeriodChannel1();
@@ -252,7 +255,7 @@ class audio {
                 PulseChannel1State.shadowFrequency = newFreq;
             }
             // Set threshold for next sweep step
-            PulseChannel1State.sweepAccumulator.threshold = sweepPeriod * 65536;
+            PulseChannel1State.sweepAccumulator.threshold = sweepPeriod * 32768;
             PulseChannel1State.sweepAccumulator.trigger = false;
         }
 
@@ -273,7 +276,7 @@ class audio {
                 }
             }
             PulseChannel1State.amplitude = (int16_t)(PulseChannel1State.volume * 32767);
-            PulseChannel1State.envelopeSweepAccumulator.threshold = envelopePeriod * 65536;
+            PulseChannel1State.envelopeSweepAccumulator.threshold = envelopePeriod * 32768;
             PulseChannel1State.envelopeSweepAccumulator.trigger = false;
         } else {
             PulseChannel1State.amplitude = (int16_t)(PulseChannel1State.volume * 32767);
@@ -472,7 +475,7 @@ class audio {
                     }
                 }
             }
-            NoiseChannel4State.amplitude = (int16_t)(NoiseChannel4State.volume * 2184); // Scale for noise
+            NoiseChannel4State.amplitude = (int16_t)(NoiseChannel4State.volume * 2184); 
             NoiseChannel4State.envelopeAccumulator.threshold = envelopePeriod * 65536;
             NoiseChannel4State.envelopeAccumulator.reset();
         } else {
@@ -489,7 +492,19 @@ class audio {
             NoiseChannel4State.randomAccumulator.threshold = freqScaledtoCpu;
             
             // Generate noise step (placeholder for LFSR logic)
-            NoiseChannel4State.step = (NoiseChannel4State.step + 1) % 32768; // 15-bit LFSR
+            //LSFR WIDTH
+            auto prevNoise = NoiseChannel4State.lsfr;
+            auto xorRes = (prevNoise >> 1 & 0b1) ^ (prevNoise & 0b1); 
+            //7 bit
+            //feedback is taken from the lowest bit of the operation the rest is feedback
+            if (memory[0xFF22] >> 3 & 0b1){
+                //compare the 7th bit in both of them
+                NoiseChannel4State.lsfr = (prevNoise & ~(1 << 6) | (xorRes << 6));
+            //15 bit
+            } else {
+                //take the 15th bit version of the comparison
+                NoiseChannel4State.lsfr = (prevNoise & ~(1 << 14) | (xorRes << 14));
+            }
         }
         
         // Return sample based on active state and current noise value
