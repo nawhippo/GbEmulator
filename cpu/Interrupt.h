@@ -35,6 +35,7 @@ int checkInterruptTrigger(){
 
 int handleVBlankInterrupt(){
 bool enabled = ((interruptEnable >> 7) & 0b1);
+
 if (!enabled){
     cout << "VBLANK INTERRUPT NOT ENABLED";
     return -1;
