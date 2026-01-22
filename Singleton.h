@@ -116,6 +116,7 @@ public:
     uint8_t* getIF() { return IF; }
     uint8_t* getTileRAM() { return tileRAM; }
     uint8_t* getInterruptRequested() { return interruptRequested; }
+    
     void push(uint16_t value) {
     memory_bus[stackPtr] = value >> 8 & 0xFFFF;
     memory_bus[stackPtr + 1] = static_cast<uint8_t>(value & 0xFF);
