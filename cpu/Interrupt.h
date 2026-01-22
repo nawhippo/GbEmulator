@@ -33,14 +33,14 @@ int checkInterruptTrigger(){
     }
 
 
-int triggerVBlankInterrupt(){
+int handleVBlankInterrupt(){
 bool enabled = ((interruptEnable >> 7) & 0b1);
 if (!enabled){
     cout << "VBLANK INTERRUPT NOT ENABLED";
     return -1;
 }
-
-
+cout << "VBLANK INTERRUPT OCCURENCE";
+    
 }
 
 int triggerLCDInterrupt(){
@@ -49,6 +49,7 @@ if (!enabled){
     cout << "LCD INTERRUPT NOT ENABLED";
     return -1;
 }
+cout << "LCD INTERRUPT OCCURENCE";
 }
 
 int triggerTimerInterrupt(){
@@ -57,6 +58,7 @@ if (!enabled){
     cout << "TIMER INTERRUPT NOT ENABLED";
     return -1;
 }
+cout << "TIMER INTERRUPT OCCURENCE";
 }
 
 
@@ -66,14 +68,16 @@ if (!enabled){
     cout << "SERIAL INTERRUPT NOT ENABLED";
     return -1;
 }
+cout << "SERIAL INTERRUPT OCCURENCE";
 }
 
-
+//redraw
 int triggerSTATInterrupt(){
 if (!enabled){
     cout << "STAT INTERRUPT NOT ENABLED";
     return -1;
 }
+cout << "STAT INTERRUPT OCCURENCE";
 }
 
 

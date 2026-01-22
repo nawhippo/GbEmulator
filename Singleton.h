@@ -116,7 +116,6 @@ public:
     uint8_t* getIF() { return IF; }
     uint8_t* getTileRAM() { return tileRAM; }
     uint8_t* getInterruptRequested() { return interruptRequested; }
-
     void push(uint16_t value) {
     memory_bus[stackPtr] = value >> 8 & 0xFFFF;
     memory_bus[stackPtr + 1] = static_cast<uint8_t>(value & 0xFF);
@@ -144,7 +143,7 @@ public:
             tileRAM        = &memory_bus[0x9800];
             echoRAM        = &memory_bus[0xE000];
             OAM            = &memory_bus[0xFE00];
-        unusable       = &memory_bus[0xFEA0];
+            unusable       = &memory_bus[0xFEA0];
             hram           = &memory_bus[0xFF80];
             lcd_registers  = &memory_bus[0xFF40];
             lcdc           = &memory_bus[0xFF40];

@@ -5,110 +5,67 @@
 
 class audio {
 
-          // 1. Pulse Channel 1
     struct PulseChannel1State {
-        // Status fields
         bool channelEnabled;
-        
-        // Timing fields
         int step = 0;
         uint8_t dutyIndex;
         int lengthTimer = 64;
         bool lengthEnable;
-        
-        // Accumulator references
         Accumulator& phaseAccumulator = Clock.Accumulators['a'];
         Accumulator& sweepAccumulator = Clock.Accumulators['b'];
         Accumulator& envelopeSweepAccumulator = Clock.Accumulators['c'];
         Accumulator& lengthAccumulator = Clock.Accumulators['d'];
-        
-        // Frequency fields
         uint16_t& shadowFrequency = Singleton.getChannel1ShadowFrequency();
         uint8_t sweepShift;
         uint8_t sweepDirection;
-        
-        // Volume/Envelope fields
         uint8_t volume = (memory[0xFF12] >> 4) & 0xF;
         uint8_t amplitude;
         uint8_t envelope;
         uint8_t envelopePeriod;
         uint32_t envelopeAccumulator;
-        
-        // Trigger fields
         uint8_t& shadowTrigger = Singleton.getInstance().getShadowTriggerChannel1();
     };
 
-    // 2. Pulse Channel 2
     struct PulseChannel2State {
-        // Status fields
         bool channelEnabled;
-        
-        // Timing fields
         int step = 0;
         uint8_t dutyIndex;
         uint8_t lengthTimer = Singleton.getInstance().getChannel2LengthTimer();
-        
-        // Accumulator references
         Accumulator& phaseAccumulator = Clock.Accumulators['g'];
         Accumulator& lengthAccumulator = Clock.Accumulators['f'];
         Accumulator& lengthAccumulator = Clock.Accumulators['h'];
-        
-        // Frequency fields
         uint16_t& shadowFrequency = Singleton.getInstance().getChannel2ShadowFrequency();
-        
-        // Volume/Envelope fields
         uint8_t volume = (memory[0xFF17] >> 4) & 0xF;
         uint8_t amplitude;
         uint8_t envelope;
         uint8_t envelopePeriod;
         uint32_t envelopeAccumulator;
-        
-        // Trigger fields
         uint8_t& shadowTrigger = Singleton.getInstance().getShadowTriggerChannel2();
     };
 
-    // 3. Voluntary Channel 3
     struct VoluntaryChannel3State {
-        // Status fields
         bool active = memory[0xFFA1] >> 6 & 0b1;
-        
-        // Timing fields
         int step = 0;
         uint8_t& lengthTimer = Singleton.getInstance().getChannel3LengthTimer();
         uint8_t length;
-        
-        // Accumulator references
         Accumulator& phaseAccumulator = Clock.Accumulators['j'];
         Accumulator& lengthAccumulator = Clock.Accumulators['k'];
-        
-        // Frequency fields
         uint16_t& shadowFrequency = Singleton.getInstance().getChannel3ShadowFrequency();
-        
-        // Volume/Envelope fields
         int volume = (memory[0xFF1C] >> 4) & 0b11;
         uint8_t* amplitude;
-        
-        // Trigger fields
         uint8_t& shadowTrigger = Singleton.getInstance().getShadowTriggerChannel3();
     };
 
     struct NoiseChannel4State {
-        // Status fields
         int active;
         bool lengthEnable = memory[0xFF23] >> 7 & 0b1;
         bool lengthEnable;
-        //cache prev
         uint16_t lsfr;
-        // Timing fields
         int step = 0;
         uint8_t& lengthTimer = Singleton.getInstance().getChannel4LengthTimer();
-        
-        // Accumulator references
         Accumulator& randomAccumulator = Clock.Accumulators['l'];
         Accumulator& lengthAccumulator = Clock.Accumulators['m'];
         Accumulator& envelopeAccumulator = Clock.Accumulators['n'];
-        
-        // Frequency fields
         uint16_t& shadowFrequency = Singleton.getInstance().getChannel4ShadowFrequency();
         double clockDivider = memory[0xFF22] & 0b111;
         uint8_t clockShift = (memory[0xFF22] >> 4) & 0b1111;
@@ -138,58 +95,42 @@ class audio {
     int phaseStep = 0;
     Clock& clock = Singleton.getInstance.getClock();
     const std::unordered_map<uint8_t, std::array<uint8_t, 8>> dutyTable = {
-        { 0b00, { 0,0,0,0,0,0,0,1 } }, // 12.5%
-        { 0b01, { 0,0,0,0,0,0,1,1 } }, // 25%
-        { 0b10, { 0,0,0,0,1,1,1,1 } }, // 50%
-        { 0b11, { 1,1,1,1,1,1,0,0 } }  // 75%
-        };
+        { 0b00, { 0,0,0,0,0,0,0,1 } },
+        { 0b01, { 0,0,0,0,0,0,1,1 } },
+        { 0b10, { 0,0,0,0,1,1,1,1 } },
+        { 0b11, { 1,1,1,1,1,1,0,0 } }
+    };
 
-   
-    
-   
+    const int SDL_SAMPLE_RATE = 44100;
+    int* channel1PhaseStep = 0;
+    uint8_t* channel1Frequency = singleton.getInstance().getChannel1Frequency();
+    uint8_t* memory = singleton.getInstance().getMemoryBus();
+    uint8_t* audioMaster = &memory[0xFF26];
+    uint8_t* soundPanning = &memory[0XFF25];
+    uint8_t* MasterVolumeVIN = &memory[0xFF24];
+    uint8_t* Channel1Sweep = &memory[0xFF10];
+    uint8_t* Channel1LengthDutyTimer = &memory[0xFF11];
+    uint8_t* Channel1VolumeEnvelope = &memory[0xFF12];
+    uint8_t* Channel1PeriodLow = &memory[0xFF13];
+    uint8_t* Channel1PeriodHigh = &memory[0xFF14];
+    uint8_t* Channel3DACEnable = &memory[0xFF1A];
+    uint8_t* Channel3LengthTimer = &memory[0xFF1B];
+    uint8_t* Channel3OutputLevel = &memory[0xFF1C];
+    uint8_t* Channel3PeriodLow = &memory[0xFF1D];
+    uint8_t* Channel3PeriodHigh = &memory[0xFF1E];
+    uint8_t* Channel4LengthTimer = &memory[0xFF20];
+    uint8_t* Channel4VolumeEnvelope = &memory[0xFF21];
+    uint8_t* Channel4Frequency = &memory[0xFF22];
+    uint8_t* Channel4Control = &memory[0xFF23];
+    uint8_t* WavePatternRAM = &memory[0xFF30];
 
-
-       const int SDL_SAMPLE_RATE = 44100;
-       int* channel1PhaseStep = 0;
-       uint8_t* channel1Frequency = singleton.getInstance().getChannel1Frequency();
-       uint8_t* memory = singleton.getInstance().getMemoryBus();
-       uint8_t* audioMaster = &memory[0xFF26];
-       uint8_t* soundPanning = &memory[0XFF25];
-       uint8_t* MasterVolumeVIN = &memory[0xFF24];
-       uint8_t* Channel1Sweep = &memory[0xFF10];
-       uint8_t* Channel1LengthDutyTimer = &memory[0xFF11];
-       uint8_t* Channel1VolumeEnvelope = &memory[0xFF12];
-       //WRITE ONLY
-       uint8_t* Channel1PeriodLow = &memory[0xFF13];
-       uint8_t* Channel1PeriodHigh = &memory[0xFF14];
-       uint8_t* Channel3DACEnable = &memory[0xFF1A];
-       uint8_t* Channel3LengthTimer = &memory[0xFF1B];
-       uint8_t* Channel3OutputLevel = &memory[0xFF1C];
-       uint8_t* Channel3PeriodLow = &memory[0xFF1D];
-       uint8_t* Channel3PeriodHigh = &memory[0xFF1E];
-
-       uint8_t* Channel4LengthTimer = &memory[0xFF20];
-       uint8_t* Channel4VolumeEnvelope = &memory[0xFF21];
-       uint8_t* Channel4Frequency = &memory[0xFF22];
-       uint8_t* Channel4Control = &memory[0xFF23];
-       //16 bytes - each byte holds 2 samples - upper nibble first FF30 Upper -> FF30 Lower -> FF31 Upper
-
-       uint8_t* WavePatternRAM = &memory[0xFF30];
-
-    //this needs to be called every time the sdl callback is called - so the fixed SDL sample rate. return the current phase step every time sdl pings it
     int16_t generatePulseWaveChannel1() {
-        // Duty cycle from FF11 (bits 6-7)
         uint8_t duty = (memory[0xFF11] >> 6) & 0b11;
-        // Length trigger and enable from FF14
         bool lengthTrigger = (memory[0xFF14] >> 6) & 0b1;
         bool lengthEnable = (memory[0xFF14] >> 5) & 0b1;
-    
-        // --- Begin trigger logic for channel 1 ---
-        //this activates when writing to the trigger channel
         if (PulseChannel1State.shadowTrigger) {
             PulseChannel1State.active = 1;
             PulseChannel1State.lengthTimer = 1;
-            // Set enabled flag or clear it
             if (PulseChannel1State.active == 0) {
                 PulseChannel1State.active = 1;
             } else {
@@ -206,18 +147,16 @@ class audio {
             } else {
                 newFreq = freq + sweepDelta;
             }
-            // overflow check
             if (newFreq > 2047) {
                 PulseChannel1State.active = 0;
             } else {
                 PulseChannel1State.shadowFrequency = newFreq;
             }
-            //THE TOTAL CPU CLOCK IS DIVIDED BY THE TIMER RATE 
             PulseChannel1State.phaseAccumulator.threshold = (2048 - newfreq) * 32;
             PulseChannel1State.volume = (memory[0xFF12] >> 4) & 0xF;
             PulseChannel1State.envelopeSweepAccumulator.reset();
             PulseChannel1State.shadowFrequency = getPeriodChannel1();
-            PulseChannel1State.shadowTrigger = 0; // Reset shadow trigger after handling
+            PulseChannel1State.shadowTrigger = 0;
         }
         if (lengthEnable) {
             if (PulseChannel1State.lengthAccumulator.trigger && PulseChannel1State.lengthTimer > 0) {
@@ -227,7 +166,6 @@ class audio {
                 }
             }
         }
-        // Envelope logic
         uint8_t envelope = memory[0xFF12];
         uint8_t initialVolume = (envelope >> 4) & 0xF;
         bool envelopeDirection = (envelope >> 3) & 0x1;
@@ -248,18 +186,15 @@ class audio {
             } else {
                 newFreq = freq + sweepDelta;
             }
-            // overflow check
             if (newFreq > 2047) {
                 PulseChannel1State.active = 0;
             } else {
                 PulseChannel1State.shadowFrequency = newFreq;
             }
-            // Set threshold for next sweep step
             PulseChannel1State.sweepAccumulator.threshold = sweepPeriod * 32768;
             PulseChannel1State.sweepAccumulator.trigger = false;
         }
 
-        // Envelope sweep accumulator logic
         if (PulseChannel1State.envelopeSweepAccumulator.trigger) {
             if (envelopePeriod > 0) {
                 if (envelopeDirection) {
@@ -287,30 +222,22 @@ class audio {
             PulseChannel1State.dutyIndex = PulseChannel1State.step % 8;
             PulseChannel1State.step = (PulseChannel1State.step + 1) % 8;
             Pulse1Channel1State.phaseAccumulator.reset();
-            //11 bit max number is 2048 - we count up to 2048 and multiply by four since the audio is a forth the speed of the cpu (we are basesd off cpu instructions)
             Pulse1Channel1State.phaseAccumulator.threshold = (2048 - *channel1ShadowFrequency) * 4;
         }
-        // Only update sample if active
         bool on = dutyTable.at(duty)[PulseChannel1State.dutyIndex];
         int16_t sample = (PulseChannel1State.active && on) ? PulseChannel1State.amplitude : 0;
         return sample;
     }
 
-    //the frequency is the difference between calls happening very fast.
     uint16_t generatePulseWaveChannel2() {
-        // Duty cycle from FF16 (bits 6-7)
         uint8_t duty = memory[0xFF16];
         int dutytableindex = (duty >> 6) & 0b11;
-        // Envelope from FF17
         uint8_t envelope = memory[0xFF17];
-        // Frequency: upper 3 bits of FF19, all of FF18
         uint16_t frequency = getPeriodChannel2();
 
-        // --- Begin trigger logic for channel 2 ---
         if (PulseChannel2State.shadowTrigger) {
             PulseChannel2State.active = 1;
             PulseChannel2State.lengthTimer = 1;
-            // Set enabled flag or clear it
             if (PulseChannel2State.active == 0) {
                 PulseChannel2State.active = 1;
             } else {
@@ -322,7 +249,6 @@ class audio {
             PulseChannel2State.shadowTrigger = 0; 
         }
         uint8_t lengthEnable = (memory[0xFF19] >> 6) & 0b1;
-        // --- Length logic for channel 2 (like channel 1) ---
         if (lengthEnable) {
             if (PulseChannel2State.lengthAccumulator.trigger && PulseChannel2State.lengthTimer > 0) {
                 PulseChannel2State.lengthTimer -= 1;
@@ -331,7 +257,6 @@ class audio {
                 }
             }
         }
-        // Envelope logic (with sweep timing, similar to channel 1)
         uint8_t initialVolume = (envelope >> 4) & 0xF;
         bool envelopeDirection = (envelope >> 3) & 0x1;
         uint8_t envelopePeriod = envelope & 0x7;
@@ -339,7 +264,6 @@ class audio {
             PulseChannel2State.volume = initialVolume;
         }
 
-        // Envelope sweep accumulator logic
         if (PulseChannel2State.envelopeSweepAccumulator.trigger) {
             if (envelopePeriod > 0) {
                 if (envelopeDirection) {
@@ -356,14 +280,12 @@ class audio {
                 }
             }
             PulseChannel2State.amplitude = (int16_t)(PulseChannel2State.volume * 32767);
-            // Set threshold for next envelope step (same as channel 1, but for channel 2)
             PulseChannel2State.envelopeSweepAccumulator.threshold = envelopePeriod * 65536;
             PulseChannel2State.envelopeSweepAccumulator.reset();
         } else {
             PulseChannel2State.amplitude = (int16_t)(PulseChannel2State.volume * 32767);
         }
 
-        // --- Tie waveform step to phase accumulator trigger ---
         if (PulseChannel2State.phaseAccumulator.trigger) {
             PulseChannel2State.dutyIndex = PulseChannel2State.step % 8;
             PulseChannel2State.step = (PulseChannel2State.step + 1) % 8;
@@ -374,7 +296,6 @@ class audio {
         return sample;
     }
 
-
     uint16_t generateVoluntaryWaveChannel3(){
         std::unordered_map<int, int> audioConversion = {
             {0b00, 0}
@@ -384,13 +305,10 @@ class audio {
         };
         VoluntaryChannel3State.volume = memory[0xFF1C] >> 4;
         VoluntaryChannel3State.amplitude = (int16_t) audioConversion[VoluntaryChannel3State.Volume] * 32767; 
-        //length timer, time until the channel shuts itself off.
         VoluntaryChannel3State.length = memory[0xFF1E] >> 5;
-        //its write only so reading it is pointless
         VoluntaryChannel3State.trigger = memory[0xFF1E] >> 6;
         VoluntaryChannel3State.volume = memory[0xFF1C] >> 4;
         bool lengthEnable = ((memory[0xFF1E] >> 6) & 0b1);
-        // --- Length logic for channel 3 (like channel 1) ---
         if (lengthEnable) {
             if (VoluntaryChannel3State.lengthAccumulator.trigger && VoluntaryChannel3State.lengthTimer > 0) {
                 VoluntaryChannel3State.lengthTimer -= 1;
@@ -398,25 +316,19 @@ class audio {
                     VoluntaryChannel3State.on = false;
                 }
             }
-            
         }
         if (VoluntaryChannel3State.shadowTrigger){
            VoluntaryChannel3State.active = 0;
            VoluntaryChannel3State.LengthAccumulator.reset();
            VoluntaryChannel3State.Volume = audioConversion[((memory[0xFF1C] >> 4) & 0b11)];
-           //TODO: reset RAM
-            VoluntaryChannel3State.step = 0;
+           VoluntaryChannel3State.step = 0;
         } 
-        //length enable handled during instructions.
         VoluntaryChannel3State.audioOutputFrequency = 2097152 / (2048 - period);
-        //read one sample
         if (VoluntaryChannel3State.phase_accumlator.trigger){
             VoluntaryChannel3State.phase_accumlator.reset()
-            //only 32 bit samples long.
             VoluntaryChannel3State.step = VoluntaryChannel3State.step % 32;   
         }
         uint8_t sampleByte = memory[0xFF30 + (VoluntaryChannel3State.step / 2)];
-        //reverse nibble order.
         uint8_t sample4bit = (VoluntaryChannel3State.step % 2 == 0) ?
         (sampleByte >> 4) : (sampleByte & 0x0F);
         uint16_t sample16bit = sample4bit * 4369; 
@@ -424,26 +336,21 @@ class audio {
     }
 
     uint16_t generateNoiseWaveChannel4(){
-        // --- Begin trigger logic for channel 4 ---
         if (NoiseChannel4State.trigger) {
             NoiseChannel4State.active = 1;
-            NoiseChannel4State.lengthTimer = memory[0xFF20] & 0b111111; // 6-bit length timer
+            NoiseChannel4State.lengthTimer = memory[0xFF20] & 0b111111;
             NoiseChannel4State.volume = (memory[0xFF21] >> 4) & 0xF;
             NoiseChannel4State.envelopeAccumulator.reset();
             NoiseChannel4State.randomAccumulator.reset();
-            
-            // Calculate frequency for phase accumulator
             auto divider = memory[0xFF22] & 0b111;
             if (divider == 0) divider = 0.5;
             auto shift = (memory[0xFF22] >> 4) & 0b1111;
             auto freq = 262144 / (divider << (2 * shift));
             auto freqScaledtoCpu = (4194304.0 / freq);
             NoiseChannel4State.randomAccumulator.threshold = freqScaledtoCpu;
-            NoiseChannel4State.trigger = 0; // Reset trigger after handling
+            NoiseChannel4State.trigger = 0;
             NoiseChannel4State.step = (NoiseChannel4State.step + 1) % 32768;
         }
-        
-        //when written to this happens immediately. TODO: need a way to refer to the struct globally so i can change the length enable state. 
         if (NoiseChannel4State.lengthEnable) {
             if (NoiseChannel4State.lengthAccumulator.trigger && NoiseChannel4State.lengthTimer > 0) {
                 NoiseChannel4State.lengthTimer -= 1;
@@ -453,13 +360,10 @@ class audio {
                 NoiseChannel4State.lengthAccumulator.reset();
             }
         }
-        
-        // Envelope logic (similar to channels 1 and 2)
         uint8_t envelope = memory[0xFF21];
         uint8_t initialVolume = (envelope >> 4) & 0xF;
         bool envelopeDirection = (envelope >> 3) & 0x1;
         uint8_t envelopePeriod = envelope & 0x7;
-        
         if (NoiseChannel4State.envelopeAccumulator.trigger) {
             if (envelopePeriod > 0) {
                 if (envelopeDirection) {
@@ -481,8 +385,6 @@ class audio {
         } else {
             NoiseChannel4State.amplitude = (int16_t)(NoiseChannel4State.volume * 2184);
         }
-
-        // Phase accumulator logic (similar to other channels)
         if (NoiseChannel4State.randomAccumulator.trigger){
             auto divider = memory[0xFF22] & 0b111;
             auto shift = (memory[0xFF22] >> 4) & 0b1111;
@@ -490,32 +392,20 @@ class audio {
             auto freqScaledtoCpu = (4194304.0 / freq);
             NoiseChannel4State.randomAccumulator.reset();
             NoiseChannel4State.randomAccumulator.threshold = freqScaledtoCpu;
-            
-            // Generate noise step (placeholder for LFSR logic)
-            //LSFR WIDTH
             auto prevNoise = NoiseChannel4State.lsfr;
             auto xorRes = (prevNoise >> 1 & 0b1) ^ (prevNoise & 0b1); 
-            //7 bit
-            //feedback is taken from the lowest bit of the operation the rest is feedback
             if (memory[0xFF22] >> 3 & 0b1){
-                //compare the 7th bit in both of them
                 NoiseChannel4State.lsfr = (prevNoise & ~(1 << 6) | (xorRes << 6));
-            //15 bit
             } else {
-                //take the 15th bit version of the comparison
                 NoiseChannel4State.lsfr = (prevNoise & ~(1 << 14) | (xorRes << 14));
             }
         }
-        
-        // Return sample based on active state and current noise value
         int16_t sample = NoiseChannel4State.active ? NoiseChannel4State.amplitude : 0;
         return sample;
     }
 
     uint16_t handleAudioMixing(){
         uint8_t bufferlen = 4096;
-        //128mhz sweep maybe incrementing every tick
-        //check if channels are on 
         bool channel1On = (audioMaster | 0b1);
         bool channel2On = ((audioMaster >> 1)| 0b1);
         bool channel3On = ((audioMaster >> 2)| 0b1);
@@ -533,121 +423,113 @@ class audio {
         if (channel4On){
             outputbuffer*+=channel4stream;
         }
-        
         SDL_AudioStreamPut(outputbuffer, bufferlen);
     }
-
 
     void openChannel1AudioDevice(){
         SDL_AudioSpec want, have;
         SDL_zero(want);
-        want.freq = 44100;                    // sample rate
-        want.format = AUDIO_S16SYS;           // signed 16-bit samples
-        want.channels = 1;                    // mono
-        want.samples = 1024;                  // buffer size in frames
-        want.callback = audio_callback;       // your function
-        want.userdata = &PulseChannel1State;       // pass a pointer to your state
+        want.freq = 44100;
+        want.format = AUDIO_S16SYS;
+        want.channels = 1;
+        want.samples = 1024;
+        want.callback = audio_callback;
+        want.userdata = &PulseChannel1State;
         SDL_AudioDeviceID channel1dev = SDL_OpenAudioDevice(
-            nullptr,       // default device
-            0,             // 0 = playback
+            nullptr,
+            0,
             &want,
             &have,
-            0              // allow format changes = 0 means "no"
+            0
         );
-
         if (dev == 0) {
             SDL_Log("Failed to open audio: %s", SDL_GetError());
             return;
         }
     }
-
 
     void openChannel2AudioDevice(){
         SDL_AudioSpec want, have;
         SDL_zero(want);
-        want.freq = 44100;                    // sample rate
-        want.format = AUDIO_S16SYS;           // signed 16-bit samples
-        want.channels = 1;                    // mono
-        want.samples = 1024;                  // buffer size in frames
-        want.callback = audio_callback;       // your function
-        want.userdata = &PulseChannel2State;       // pass a pointer to your state
+        want.freq = 44100;
+        want.format = AUDIO_S16SYS;
+        want.channels = 1;
+        want.samples = 1024;
+        want.callback = audio_callback;
+        want.userdata = &PulseChannel2State;
         SDL_AudioDeviceID devchannel2dev = SDL_OpenAudioDevice(
-            nullptr,       // default device
-            0,             // 0 = playback
+            nullptr,
+            0,
             &want,
             &have,
-            0              // allow format changes = 0 means "no"
+            0
         );
-
         if (dev == 0) {
             SDL_Log("Failed to open audio: %s", SDL_GetError());
             return;
         }
     }
 
-        void openChannel3AudioDevice(){
+    void openChannel3AudioDevice(){
         SDL_AudioSpec want, have;
         SDL_zero(want);
-        want.freq = 44100;                    // sample rate
-        want.format = AUDIO_S16SYS;           // signed 16-bit samples
-        want.channels = 1;                    // mono
-        want.samples = 1024;                  // buffer size in frames
-        want.callback = audio_callback;       // your function
-        want.userdata = &VoluntaryChanne13State;       // pass a pointer to your state
+        want.freq = 44100;
+        want.format = AUDIO_S16SYS;
+        want.channels = 1;
+        want.samples = 1024;
+        want.callback = audio_callback;
+        want.userdata = &VoluntaryChanne13State;
         SDL_AudioDeviceID devchannel3dev = SDL_OpenAudioDevice(
-            nullptr,       // default device
-            0,             // 0 = playback
+            nullptr,
+            0,
             &want,
             &have,
-            0              // allow format changes = 0 means "no"
+            0
         );
-
         if (dev == 0) {
             SDL_Log("Failed to open audio: %s", SDL_GetError());
             return;
         }
     }
 
-        void openChannel4AudioDevice(){
+    void openChannel4AudioDevice(){
         SDL_AudioSpec want, have;
         SDL_zero(want);
-        want.freq = 44100;                    // sample rate
-        want.format = AUDIO_S16SYS;           // signed 16-bit samples
-        want.channels = 1;                    // mono
-        want.samples = 1024;                  // buffer size in frames
-        want.callback = audio_callback;       // your function
-        want.userdata = &PulseChannel4State;       // pass a pointer to your state
+        want.freq = 44100;
+        want.format = AUDIO_S16SYS;
+        want.channels = 1;
+        want.samples = 1024;
+        want.callback = audio_callback;
+        want.userdata = &PulseChannel4State;
         SDL_AudioDeviceID devchannel4dev = SDL_OpenAudioDevice(
-            nullptr,       // default device
-            0,             // 0 = playback
+            nullptr,
+            0,
             &want,
             &have,
-            0              // allow format changes = 0 means "no"
+            0
         );
-
         if (dev == 0) {
             SDL_Log("Failed to open audio: %s", SDL_GetError());
             return;
         }
     }
 
-        void openChannel5AudioDevice(){
+    void openChannel5AudioDevice(){
         SDL_AudioSpec want, have;
         SDL_zero(want);
-        want.freq = 44100;                    // sample rate
-        want.format = AUDIO_S16SYS;           // signed 16-bit samples
-        want.channels = 1;                    // mono
-        want.samples = 1024;                  // buffer size in frames
-        want.callback = audio_callback;       // your function
-        want.userdata = &PulseChannel1State;       // pass a pointer to your state
+        want.freq = 44100;
+        want.format = AUDIO_S16SYS;
+        want.channels = 1;
+        want.samples = 1024;
+        want.callback = audio_callback;
+        want.userdata = &PulseChannel1State;
         SDL_AudioDeviceID devchannel5dev = SDL_OpenAudioDevice(
-            nullptr,       // default device
-            0,             // 0 = playback
+            nullptr,
+            0,
             &want,
             &have,
-            0              // allow format changes = 0 means "no"
+            0
         );
-
         if (dev == 0) {
             SDL_Log("Failed to open audio: %s", SDL_GetError());
             return;

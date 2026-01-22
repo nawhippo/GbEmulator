@@ -1,10 +1,10 @@
 class Accumulator {
-    double count = 0;
+   
 public:
-    //this is a huge number of instruction it has to be scaled according to masterclock/ subdivision * pace
     int threshold;
     char id;
     bool trigger = false;
+    double count = 0;
     Accumulator(char id, int threshold = 0)
         : threshold(threshold), id(id) {
     }

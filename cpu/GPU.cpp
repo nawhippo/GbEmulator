@@ -4,10 +4,10 @@
 #include "Singleton.h"
 #include <SDL2.h>
 class GPU {
-//vram should be a part of the memory bus 
 Singleton& singleton = Singleton::getInstance();
 uint8_t* memorybus = singleton.getMemoryBus();
 uint8_t* VRAM = singleton.getVRAM();
+Accumulator& ppuAccumulator = Accumulators['h'];
 SDL_Renderer* renderer;
 SDL_Surface* screen;
 SDL_Event event;
@@ -15,78 +15,9 @@ SDL_Texture* texture;
 SDL_Window* window = nullptr;
 uint8_t* OAM = singleton.getOAM();
 uint8_t* lcdc = singleton.getLCDC();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//presumably loading tiles 
-//tile ram is accessed at addresses $9800-98FF
-//oam $8000-8FFF w/ unsigned numbering 
-
-//40 sprites (160 bytes) in oam - same format as bg tiles 
-//all have 4 bytes determining object attributes
-//byte 0 - y pos + 16
-//byte 1 - x pos + 8
-//byte 2 - Tile Index
-//byte 3 - Attributes(palette, flip, priority)
-//attr flags  7 priority 6 y flip 5 x flip 4 dmg palette 3 bank 2 1 0 - cgb paletted 
-
-
-//Priority definitions 
-//1 object is ignored when more than 10 are displayed on the scanline
-//2 determiens whether it overlaps when sprite space is occupied by more than one object - how is it layered 
-
-
-//draw priority 
-//in non cgb mode the smaller the x coord the higher the priority when xs are identical the object located first in oam has higher prior
-//in cgb mode only the location in oam determines priority 
-
-
-//ppu functionality 
-
-
-//vram tile data 
-//3 blocks of tile data 
-//block 0 = 8000 - 87FF objects are 0 - 127/ bg is 0 - 127, 
-//block 1 = 8800 - 8FFF
-//block 2 = 9000 - 97FF
-
-
-//resolution is 160 x 144 pixels 
-
-//vblank, versus rasterization
-
-//def blocks to screen
-
-//one tile is 16 bytes 
-//it is 8x8 pixels
-//per pixel there is 4 bits for color depth
-//each row = 2 bytes one for bitplane 0 and 1 for bitplane 1 
-//bitplane 1 is more sig than bit plane 0 - they both determine the color of a row
-
-//when background - certain palette, when object - 0 is transparent
+uint8_t* STAT = memory[0xFF41];
+//only during this can cpu access vram
 uint8_t translateColor(uint8_t bits, bool background){
-    //color values
     switch(bits) {
     case 0:
         return 225;
@@ -95,9 +26,8 @@ uint8_t translateColor(uint8_t bits, bool background){
     case 2:
         return 125;
     case 3:
-        //MODE 2 means sprite 
         if (background == false){
-            return 255; // Return white instead of -1
+            return 255;
         }
         return 0;
     default:
@@ -106,12 +36,9 @@ uint8_t translateColor(uint8_t bits, bool background){
 }
 
 uint8_t process_background_pixel_data(uint8_t curr, uint8_t tileindex, SDL_Renderer* renderer){
-    //16 bit row.. 2 bit color
-    //tiles are arranged in memory row by row for individual tiles, not gestalt scanlines.
     uint8_t tilemapbool = (*lcdc >> 3) & 0x1;
     uint8_t tiledatabool = (*lcdc >> 4) & 0x1;
     uint8_t tilemapchoose = (*lcdc >> 6) & 0x1;
-    //window scroll
     uint8_t WY = memorybus[0xFF4A];
     uint8_t WX = memorybus[0xFF4B];
     bool nonGBCModeWindowToggle = (*lcdc & 1);
@@ -187,17 +114,14 @@ uint8_t process_background_pixel_data(uint8_t curr, uint8_t tileindex, SDL_Rende
             }
         }
     }
+    STAT* = 3;
     return 0;
 }
 
 uint8_t process_object_pixel_data(int8_t curr, uint8_t tileindex, SDL_Renderer* renderer){
-    //this should run every draw cycle
-    //this is the current tile in vram
-    //little endian
     int wide = 160;
-    int height = 144; 
+    int height = 153; 
 
-    //16 bit row.. 2 bit color
     uint8_t* scrollX = singleton.getSCX();
     uint8_t* scrollY = singleton.getSCY();
     uint8_t tilemapbool = (*lcdc >> 3) & 1;
@@ -211,23 +135,18 @@ uint8_t process_object_pixel_data(int8_t curr, uint8_t tileindex, SDL_Renderer* 
         mapbase = 0x9C00;
     }
 
-    //tile data for objects is always 8000
     database = 0x8000;
     uint8_t* TileMapPtr = &memorybus[mapbase];
     uint8_t* OAMblock = singleton.getOAM();
     
     for (int screenY = 0; screenY < height; screenY++){
         for (int screenX = 0; screenX < wide; screenX++){
-            //no palettes being used in non gbc mode
-            //this is 8 pixels, not 16 - they are combined. 
+    
             uint8_t bgX = (screenX + *scrollX) & 0xFF;
             uint8_t bgY = (screenY + *scrollY) & 0xFF;
             uint8_t tileX = bgX / 8;
             uint8_t tileY = bgY / 8;
-            //16x16 bits for a two bit color depth - the memory unit is uint8_t so /8 hence 32 tile y.
-            //32 x 32 tile index grid (each tile index is 1 byte and there are 32 tiles in a row so)
             uint8_t tileIndex = TileMapPtr[tileY * 32 + tileX]; 
-            //16 bytes for tile
             uint8_t *tileDataPtr = &memorybus[0x8000 + tileIndex * 16];
 
             uint8_t pixelX = bgX % 8;
@@ -245,8 +164,6 @@ uint8_t process_object_pixel_data(int8_t curr, uint8_t tileindex, SDL_Renderer* 
             uint8_t bank = (attributes >> 3) & 0b1;
             int bit = 7 - pixelX;
 
-            //colors are 2bit values - row data is a series of
-            //this boils it down to just 2 bit
             int color = ((hi >> bit) & 1) << 1 | ((lo >> bit) & 1);
 
             color = translateColor(color, false);
@@ -255,18 +172,15 @@ uint8_t process_object_pixel_data(int8_t curr, uint8_t tileindex, SDL_Renderer* 
             } else {
                 SDL_SetRenderDrawColor(renderer, 0, 0, color, 255);
             }
-            //16 bits per palette. 
             int x_coord = x_flip ? wide - screenX : screenX;
             int y_coord = y_flip ? height - screenY : screenY;
             
             SDL_RenderDrawPoint(renderer, screenX, screenY);
         }
     }
+    STAT* = 1;
     return 0;
 }
-
-
-
 
 int init_SDL(int argc, char* argv[]){
     if((SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO)==-1)) {
@@ -290,21 +204,10 @@ int init_SDL(int argc, char* argv[]){
     }
 };
 
-
-
-
-//dots are hoz pizel lines
-//FF46 writes from ROM/RAM to OAM
-//DMA takes 160-M cyclees 640 dots
-//rom and WRAM are on seperate cartridges 
-//blocks OAM reads
-//busy-wait in hram because call makes return address on stack
-//do not activate during rendering or incorrecot tiel numbers will be fetched, becuase the ppu will read the dma writes as opposed to oam data itself.
-//do not read during oam scan as it will hide it and count it as off screen
-
 int dma_transfer(){
     uint8_t starting_address_hi = memorybus[0xFF46];
-    uint16_t transfer_start_address = starting_address_hi << 8;
+    uint8_t starting_address_lo = memorybus[0xFF46] + 1;
+    uint16_t transfer_start_address = (starting_address_hi << 8) & starting_address_lo;
     uint8_t* bus = singleton.getMemoryBus();
     uint8_t* curr_oam = singleton.getOAM();
     while (transfer_start_address < transfer_start_address + 0x009F){

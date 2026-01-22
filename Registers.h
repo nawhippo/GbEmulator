@@ -1,8 +1,9 @@
-
 #include <cstdint>
 class Registers {
 public:
     uint8_t registersArr[8] = {}; //a, b, c, d, e, h, l, f
+    uint8_t bg3 = 0;
+    uint8_t tgt3 = 0;
     bool flagsregister = {false, false, false, false};
     struct Flags {
         bool zero;
