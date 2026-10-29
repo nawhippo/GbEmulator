@@ -1,5 +1,4 @@
-#ifndef CLOCK
-#define CLOCK
+#pragma once
 #include "Accumulator.h"
 #include "Audio.h"
 #include "Interrupt.h"
@@ -103,4 +102,3 @@ class Clock {
 
 };
 }
-#endif

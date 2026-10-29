@@ -1,5 +1,4 @@
-#ifndef SINGLETON_H
-#define SINGLETON_H
+#pragma once
 #include <stdio.h>
 #include <cstdint>
 #include <algorithm>
@@ -129,45 +128,42 @@ public:
     return result;
     }
 
-    private:
-        Singleton() {
-            memset(memory_bus, 0, sizeof(memory_bus));
-            // set pointers after memory_bus exists
-            interruptEnable = &memory_bus[0xFFFF];
-            interruptRequested = &memory_bus[0xFF0F];
-            romBank0       = &memory_bus[0x0000];
-            romBankN       = &memory_bus[0x4000];
-            vram           = &memory_bus[0x8000];
-            externalRAM    = &memory_bus[0xA000];
-            wramBank0      = &memory_bus[0xC000];
-            wramBank1      = &memory_bus[0xD000];
-            tileRAM        = &memory_bus[0x9800];
-            echoRAM        = &memory_bus[0xE000];
-            OAM            = &memory_bus[0xFE00];
-            unusable       = &memory_bus[0xFEA0];
-            hram           = &memory_bus[0xFF80];
-            lcd_registers  = &memory_bus[0xFF40];
-            lcdc           = &memory_bus[0xFF40];
-            stat           = &memory_bus[0xFF41];
-            lyc            = &memory_bus[0xFF44];
-            ly             = &memory_bus[0xFF45];
-            SCX            = &memory_bus[0xFF42];
-            SCY            = &memory_bus[0xFF43];
-            WY             = &memory_bus[0xFF4A];
-            WX             = &memory_bus[0xFF4B];
-            IF             = &memory_bus[0xFF0F];
-            IE             = &memory_bus[0xFFFF];
-            
-            // Initialize audio channel length timer references
-            channel1LengthTimer = &memory_bus[0xFF11]; // NR11 - Channel 1 Sound length/Wave pattern duty
-            channel2LengthTimer = &memory_bus[0xFF16]; // NR21 - Channel 2 Sound length/Wave pattern duty  
-            channel3LengthTimer = &memory_bus[0xFF1B]; // NR31 - Channel 3 Sound length
-            channel4LengthTimer = &memory_bus[0xFF20]; // NR41 - Channel 4 Sound length
-            
-            channel1ShadowFrequency = (static_cast<uint16_t>(memory_bus[0xFF14] & 0x07) << 8) | memory_bus[0xFF13];
-            channel2ShadowFrequency = ((memory_bus[0xFF19] & 0b111) << 8) | memory_bus[0xFF18];
-            channel3ShadowFrequency = ((memory_bus[0xFF1E] & 0b111) << 8) | memory_bus[0xFF1D];
-        }
+    Singleton() {
+        memset(memory_bus, 0, sizeof(memory_bus));
+        // set pointers after memory_bus exists
+        interruptEnable = &memory_bus[0xFFFF];
+        interruptRequested = &memory_bus[0xFF0F];
+        romBank0       = &memory_bus[0x0000];
+        romBankN       = &memory_bus[0x4000];
+        vram           = &memory_bus[0x8000];
+        externalRAM    = &memory_bus[0xA000];
+        wramBank0      = &memory_bus[0xC000];
+        wramBank1      = &memory_bus[0xD000];
+        tileRAM        = &memory_bus[0x9800];
+        echoRAM        = &memory_bus[0xE000];
+        OAM            = &memory_bus[0xFE00];
+        unusable       = &memory_bus[0xFEA0];
+        hram           = &memory_bus[0xFF80];
+        lcd_registers  = &memory_bus[0xFF40];
+        lcdc           = &memory_bus[0xFF40];
+        stat           = &memory_bus[0xFF41];
+        lyc            = &memory_bus[0xFF44];
+        ly             = &memory_bus[0xFF45];
+        SCX            = &memory_bus[0xFF42];
+        SCY            = &memory_bus[0xFF43];
+        WY             = &memory_bus[0xFF4A];
+        WX             = &memory_bus[0xFF4B];
+        IF             = &memory_bus[0xFF0F];
+        IE             = &memory_bus[0xFFFF];
+        
+        // Initialize audio channel length timer references
+        channel1LengthTimer = &memory_bus[0xFF11]; // NR11 - Channel 1 Sound length/Wave pattern duty
+        channel2LengthTimer = &memory_bus[0xFF16]; // NR21 - Channel 2 Sound length/Wave pattern duty  
+        channel3LengthTimer = &memory_bus[0xFF1B]; // NR31 - Channel 3 Sound length
+        channel4LengthTimer = &memory_bus[0xFF20]; // NR41 - Channel 4 Sound length
+        
+        channel1ShadowFrequency = (static_cast<uint16_t>(memory_bus[0xFF14] & 0x07) << 8) | memory_bus[0xFF13];
+        channel2ShadowFrequency = ((memory_bus[0xFF19] & 0b111) << 8) | memory_bus[0xFF18];
+        channel3ShadowFrequency = ((memory_bus[0xFF1E] & 0b111) << 8) | memory_bus[0xFF1D];
+    }
 };
-
-#endif

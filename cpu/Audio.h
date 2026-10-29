@@ -1,8 +1,8 @@
+#pragma once
 #include <singleton.h>
 #include <SDL2.h>
 #include "accumulator.h"
-
-
+//4 channel stereo
 class audio {
 
     struct PulseChannel1State {

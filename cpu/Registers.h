@@ -1,3 +1,4 @@
+#pragma once
 #include <cstdint>
 class Registers {
 public:
@@ -39,6 +40,7 @@ public:
         currentValue = value;
 
         registersArr[high] = static_cast<uint8_t>(currentValue >> 8);
+        //clear
         registersArr[low] = static_cast<uint8_t>(currentValue & 0xFF);
 }
 
